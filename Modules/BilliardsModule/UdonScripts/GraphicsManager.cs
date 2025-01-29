@@ -1,24 +1,27 @@
-#define EIJIS_MANY_BALLS
+﻿#define EIJIS_MANY_BALLS
 #define EIJIS_SNOOKER15REDS
 #define EIJIS_PYRAMID
 #define EIJIS_CAROM
+#define EIJIS_CAROM_SPIN_MARKER
 #define EIJIS_CUSHION_EFFECT
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
+#define EIJIS_CALLSHOT_E
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 
+#define EIJIS_WINNER_TEXT_HOTFIX
+#define EIJIS_MNBK_AUTOCOUNTER
+
 // #define EIJIS_DEBUG_PIRAMIDSCORE
+// #define EIJIS_DEBUG_GAMESTATE_SYNC
+// #define EIJIS_DEBUG_CALLSHOT_MARKER
 
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using TMPro;
-using JetBrains.Annotations;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-//using System.Diagnostics;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class GraphicsManager : UdonSharpBehaviour
@@ -37,10 +40,15 @@ public class GraphicsManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
 	[Header("Pocket Billiard Call-shot")]
+#if EIJIS_CALLSHOT_E
+	// [SerializeField] Material calledPocketWhite;
+	// [SerializeField] Material calledPocketGray;
+#else
 	[SerializeField] Material calledPocketBlue;
 	[SerializeField] Material calledPocketOrange;
 	[SerializeField] Material calledPocketWhite;
 	[SerializeField] Material calledPocketGray;
+#endif
 	[SerializeField] Material calledPocketSphereBlue;
 	[SerializeField] Material calledPocketSphereOrange;
 	[SerializeField] Material calledPocketSphereWhite;
@@ -107,6 +115,12 @@ public class GraphicsManager : UdonSharpBehaviour
 	private Transform[] ballTransforms;
 	private Vector3[] ballPositions;
 
+#if EIJIS_MNBK_AUTOCOUNTER
+    private Material callSafetyOn;
+    private Material callSafetyOff;
+    private MeshRenderer callSafetyRenderer;
+    
+#endif
 	public void _Init(BilliardsModule table_)
 	{
 		table = table_;
@@ -121,6 +135,9 @@ public class GraphicsManager : UdonSharpBehaviour
 			ballTransforms[i] = balls[i].transform;
 		}
 
+#if EIJIS_WINNER_TEXT_HOTFIX
+		winnerText.text = "";
+#endif
 		winnerText_go = winnerText.gameObject;
 
 		Material[] materials = balls[0].GetComponent<MeshRenderer>().materials; // create a new instance for this table
@@ -164,6 +181,34 @@ public class GraphicsManager : UdonSharpBehaviour
 			caromCushionTouchActive[i] = false;
 			caromCushionTouchTime[i] = 0;
 		}
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        
+        Transform callSafety = table.transform.Find("intl.controls/callsafety");
+        if (ReferenceEquals(null, callSafety))
+        {
+            table._LogInfo("  intl.controls/callsafety object not set.");
+        }
+        else
+        {
+            table.callSafetyOrb = callSafety.gameObject;
+            Transform safetyCalled = callSafety.Find("render");
+            if (!ReferenceEquals(null, safetyCalled))
+            {
+                callSafetyRenderer = safetyCalled.GetComponent<MeshRenderer>();
+            }
+        }
+        Transform pause = table.transform.Find("intl.controls/pause");
+        if (ReferenceEquals(null, pause))
+        {
+            table._LogInfo("  intl.controls/pause object not set.");
+        }
+        else
+        {
+            table.pauseOrb = pause.gameObject;
+        }
+        callSafetyOn = table.transform.Find("intl.balls/dev-hit").GetComponent<MeshRenderer>().sharedMaterial;
+        callSafetyOff = table.transform.Find("intl.cue-0/body/render").GetComponent<MeshRenderer>().sharedMaterial;
 #endif
 	}
 
@@ -1126,6 +1171,10 @@ int uniform_cue_colour;
 
 	public void _OnLobbyClosed()
 	{
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_OnLobbyClosed()");
+		table._LogInfo($"EIJIS_DEBUG  winnerText.text = {winnerText.text}");
+#endif
 		winnerText.gameObject.SetActive(true);
 	}
 
@@ -1139,9 +1188,16 @@ int uniform_cue_colour;
 		scorecard_gameobject.SetActive(true);
 #if EIJIS_PYRAMID
 #if EIJIS_CAROM
+#if EIJIS_MNBK_AUTOCOUNTER
+		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
+				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion ? 2 : 
+					(table.isMnbk9Ball ? 1 : table.gameModeLocal)
+			)));
+#else
 		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
 			(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion ? 2 : table.gameModeLocal)
 			));
+#endif
 #else
         scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 : table.gameModeLocal));
 #endif
@@ -1180,7 +1236,11 @@ int uniform_cue_colour;
 
 		if (table.is4Ball)
 		{
+#if EIJIS_CAROM_SPIN_MARKER
+			balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideRegular[0];
+#else
 			balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+#endif
 			balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
 			balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[2];
 			balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[3];
@@ -1302,6 +1362,9 @@ int uniform_cue_colour;
 
 	public void _DisableObjects()
 	{
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_DisableObjects()");
+#endif
 		table.guideline.SetActive(false);
 		table.guideline2.SetActive(false);
 		table.devhit.SetActive(false);
@@ -1323,12 +1386,21 @@ int uniform_cue_colour;
 		orangeScore.gameObject.SetActive(false);
 		blueScore.gameObject.SetActive(false);
 		snookerInstruction.gameObject.SetActive(false);
+#if EIJIS_MNBK_AUTOCOUNTER
+		if (!ReferenceEquals(null, table.callSafetyOrb)) table.callSafetyOrb.SetActive(false);
+		if (!ReferenceEquals(null, table.pauseOrb)) table.pauseOrb.SetActive(false);
+#endif
 		_HideTimers();
-#if EIJIS_CALLSHOT
+#if EIJIS_CALLSHOT && EIJIS_CALLSHOT_E
+		_DisablePointPocketMarker();
+#else
 		_UpdatePointPocketMarker(0, false);
 #endif
 
 		winnerText.text = "";
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+		table._LogInfo($"EIJIS_DEBUG  winnerText.text = {winnerText.text}");
+#endif
 	}
 
 	// Finalize positions onto their rack spots
@@ -1556,34 +1628,62 @@ int uniform_cue_colour;
 
 		if (fourBallCueBall == 0)
 		{
+#if EIJIS_CAROM_SPIN_MARKER
+			ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+#else
 			table.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+#endif
 			table.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
 		}
 		else
 		{
 			table.balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[0];
+#if EIJIS_CAROM_SPIN_MARKER
+			ballMaterial.SetTexture("_MainTex", table.textureSets[7]);
+#else
 			table.balls[0].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
+#endif
 		}
 	}
 
 #if EIJIS_CALLSHOT
 	public void _UpdatePointPocketMarker(uint pointPockets, bool callShotLock)
 	{
+#if EIJIS_DEBUG_CALLSHOT_MARKER
+		table._LogInfo($"EIJIS_DEBUG GraphicsManager::_UpdatePointPocketMarker(pointPockets = {pointPockets}, callShotLock = {callShotLock})");
+#endif
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
 			bool enable = (pointPockets & (0x1u << i)) != 0;
+#if EIJIS_CALLSHOT_E
+			table.pointPocketMarkers[i].SetActive(table.requireCallShotLocal);
+#endif
 			if (enable)
 			{
+#if EIJIS_CALLSHOT_E
+				// table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketWhite;
+#else
 				table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material =
 					(callShotLock ? calledPocketGray :
 						(table.isTableOpenLocal ? calledPocketWhite :
 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
+#endif
 				table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
 					(callShotLock ? calledPocketSphereGray :
 						(table.isTableOpenLocal ? calledPocketSphereWhite :
 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
 			}
+#if EIJIS_CALLSHOT_E
+			// else
+			// {
+			// 	table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketGray;
+			// }
+			// table.pointPocketMarkerBlock[i].GetComponent<MeshRenderer>().material = enable ? calledPocketWhite : calledPocketGray;
+			table.pointPocketMarkerBlock[i].SetActive(!enable);
+			table.pointPocketMarkerSphere[i].SetActive(enable);
+#else
 			table.pointPocketMarkers[i].SetActive(enable);
+#endif
 		}
 
 		table.menuManager._StateChangeCallLockMenu(callShotLock);
@@ -1591,6 +1691,9 @@ int uniform_cue_colour;
 
 	public void _DisablePointPocketMarker()
 	{
+#if EIJIS_DEBUG_CALLSHOT_MARKER
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_DisablePointPocketMarker()");
+#endif
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
 			table.pointPocketMarkers[i].SetActive(false);
@@ -1691,4 +1794,57 @@ int uniform_cue_colour;
 		renderingProbe = false;
 		table.reflection_main.RenderProbe();
 	}
+#if EIJIS_MNBK_AUTOCOUNTER
+    
+	public void _UpdateCallSafety(bool safetyCalled)
+	{
+		if (ReferenceEquals(null, callSafetyRenderer))
+		{
+			table._LogInfo("  CallSafety object not set.");
+			return;
+		}
+
+		callSafetyRenderer.material = safetyCalled ? callSafetyOn : callSafetyOff;
+	}
+
+	public void _UpdatePaused(bool paused)
+	{
+		if (paused)
+		{
+			_HideTimers();
+			// lobbyStatusTextHolder.SetActive(true);
+			// lobbyStatusText.text = "PAUSE";
+			winnerText.gameObject.SetActive(true);
+			winnerText.text = "PAUSE";
+		}
+		else
+		{
+			// lobbyStatusTextHolder.SetActive(false);
+			winnerText.gameObject.SetActive(false);
+			if (table.gameLive)
+			{
+				_ShowTimers();
+			}
+		}
+	}
+	
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+	public string dumpWinnerText()
+	{
+		table._LogInfo($"EIJIS_DEBUG  winnerText.text = {winnerText.text} ( InstanceID {winnerText.GetInstanceID()} )");
+		return winnerText.text;
+	}
+#endif
+#endif
+#if false // EIJIS_WINNER_TEXT_HOTFIX
+	public string getWinnerText()
+	{
+		return winnerText.text;
+	}
+
+	public void setWinnerText(string text)
+	{
+		winnerText.text = text;
+	}
+#endif
 }
