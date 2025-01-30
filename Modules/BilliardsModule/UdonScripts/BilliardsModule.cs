@@ -2252,7 +2252,7 @@ public class BilliardsModule : UdonSharpBehaviour
             }
 #endif
             //_LogYes("shotcounts"+ShotCounts);
-            if (personalData != null && !isPracticeMode && ShotCounts != 0)
+            if (personalData != null && !isPracticeMode && ShotCounts != 0 || DG_LAB != null)
             {
                 VRCPlayerApi localPlayer = Networking.LocalPlayer;
                 if (localPlayer == winner1 || localPlayer == winner2 )
@@ -2271,6 +2271,7 @@ public class BilliardsModule : UdonSharpBehaviour
                         if (isSnooker) personalData.gameCountSnooker++;
                         else personalData.gameCount++;
                         personalData.loseCount++;
+                        DG_LAB.SendCustomEvent("JustShock");
                     }
                 }
                 personalData.SaveData();
