@@ -20,7 +20,8 @@ namespace WangQAQ.UdonPlug
 		[SerializeField] private GameObject _Prefab;
 		[SerializeField] private Transform ObjParent;
 
-		[HideInInspector] public VRCUrl url;
+		[SerializeField] public VRCUrl url;
+
 		[HideInInspector] public byte[] key = null;
 
 		[HideInInspector] public HC256 _hc256;
@@ -29,7 +30,7 @@ namespace WangQAQ.UdonPlug
 
 		private bool isLoading = false;
 
-		void Start()
+		public void Start()
 		{
 			if (url == null ||
 				key == null)
@@ -87,7 +88,7 @@ namespace WangQAQ.UdonPlug
 			var title = NewsList.GetKeys().ToArray();
 			var description = NewsList.GetValues().ToArray();
 
-			for (int i = 0; i < NewsList.Count; i++) 
+			for (int i = 0; i < NewsList.Count; i++)
 			{
 				var a = Instantiate(_Prefab, ObjParent);
 				var cmpObj = a.GetComponent<UdonBehaviour>();
@@ -95,7 +96,7 @@ namespace WangQAQ.UdonPlug
 				cmpObj.SetProgramVariable("Description", description[i].ToString());
 				cmpObj.SetProgramVariable("UrlID", i);
 				cmpObj.SendCustomEvent("_Init");
-			}
+			}	
 		}
 		#endregion
 	}

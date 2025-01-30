@@ -8,7 +8,7 @@ namespace EijisMsVrcsaTableUtil
 {
 	public class Package
 	{
-		private static readonly string exportPackageFilePath = "CBCTable1389_mnbk_300.unityPackage";
+		private static readonly string exportPackageFilePath = "CBCTable1390_mnbk_300.unityPackage";
 		static readonly string[] exportFilePaths = 
 		{
 			//"Assets/eijis/Editor/MsVrcsaTableUtil/MNBK_table_setup.cs",

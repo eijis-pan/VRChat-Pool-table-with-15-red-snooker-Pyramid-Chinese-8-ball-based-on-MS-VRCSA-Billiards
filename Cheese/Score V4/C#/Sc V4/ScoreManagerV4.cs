@@ -11,6 +11,7 @@ using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDKBase;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class ScoreManagerV4 : UdonSharpBehaviour
@@ -63,16 +64,16 @@ public class ScoreManagerV4 : UdonSharpBehaviour
 			return;
 		}
 
-		// 尝试寻找控件
-		if (EloAPI == null)
-		{
-			EloAPI = GameObject.Find("EloDownload").GetComponent<EloDownload>();
-			if (EloAPI == null)
-			{
-				this.enabled = false;
-				return;
-			}
-		}
+		//// 尝试寻找控件
+		//if (EloAPI == null)
+		//{
+		//	EloAPI = GameObject.Find("EloDownload").GetComponent<EloDownload>();
+		//	if (EloAPI == null)
+		//	{
+		//		this.enabled = false;
+		//		return;
+		//	}
+		//}
 
 		//Init
 		Network._Init(this);
@@ -120,8 +121,8 @@ public class ScoreManagerV4 : UdonSharpBehaviour
 
 	private void _ReflashEloScore()
 	{
-		Elo1.text = EloAPI.GetElo(Network.PlayerA).ToString();
-		Elo2.text = EloAPI.GetElo(Network.PlayerB).ToString();
+		//Elo1.text = EloAPI.GetElo(Network.PlayerA).ToString();
+		//Elo2.text = EloAPI.GetElo(Network.PlayerB).ToString();
 	}
 
 	#endregion
@@ -463,6 +464,13 @@ public class ScoreManagerV4 : UdonSharpBehaviour
 		gameResetLocal();
 	}
 
-	#endregion
-
+    #endregion
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        string leftPlayerName = player.displayName;
+        if (leftPlayerName == Network.PlayerA || leftPlayerName == Network.PlayerB)
+        {
+			_GameReset();
+        }
+    }
 }
