@@ -2566,7 +2566,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION
         _LogInfo($"TKCH EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION cueBallFixed = {cueBallFixed}");
 #endif
-        if (requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
+        if ((is8Ball || is9Ball || is10Ball) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
         {
             graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
         }
@@ -2711,7 +2711,7 @@ public class BilliardsModule : UdonSharpBehaviour
         }
 #endif
 #if EIJIS_CALLSHOT_E
-        if (!colorTurnLocal || !stateIdChanged)
+        if ((is8Ball || is9Ball || is10Ball) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
         {
             graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
         }

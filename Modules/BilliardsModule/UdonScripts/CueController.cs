@@ -1,4 +1,5 @@
-﻿#define EIJIS_ISSUE_FIX
+﻿#define CHEESE_ISSUE_FIX
+#define EIJIS_ISSUE_FIX
 
 using System;
 using UdonSharp;
@@ -479,7 +480,17 @@ public class CueController : UdonSharpBehaviour
 
     public void resetScale()
     {
+#if CHEESE_ISSUE_FIX
+        if (!Networking.IsOwner(gameObject))    //cheese try to fix issue
+        {
+            if(!ReferenceEquals(null,authorizedOwners) && 2 <= authorizedOwners.Length && (Networking.LocalPlayer.playerId == authorizedOwners[0] || Networking.LocalPlayer.playerId == authorizedOwners[1]))
+                Networking.SetOwner(Networking.LocalPlayer,gameObject);
+            else
+                return; 
+        }
+#else
         if (!Networking.IsOwner(gameObject)) return;
+#endif
         if (cueScale == 1) return;
         cueScale = 1;
         RequestSerialization();

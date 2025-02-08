@@ -8,7 +8,7 @@ namespace EijisMsVrcsaTableUtil
 {
 	public class Package
 	{
-		private static readonly string exportPackageFilePath = "CBCTable1389_mnbk_300.unityPackage";
+		private static readonly string exportPackageFilePath = "CBCTable1389_mnbk_301.unityPackage";
 		static readonly string[] exportFilePaths = 
 		{
 			//"Assets/eijis/Editor/MsVrcsaTableUtil/MNBK_table_setup.cs",
@@ -88,7 +88,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/UdonScripts/ScoreScreen/TeamPlayers.cs"
 		};
 		
-		[MenuItem("GameObject/MNBK/ExportPackage300", false, 0)]
+		[MenuItem("GameObject/MNBK/ExportPackage301", false, 0)]
 		private static void ExportPackage_Menu(MenuCommand command)
 		{
 			try
