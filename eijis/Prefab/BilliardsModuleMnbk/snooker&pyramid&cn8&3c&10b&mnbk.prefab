@@ -615,7 +615,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: MNBK 3.0.0
+  m_text: MNBK 3.0.2
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 21ac83a342a0b7144a87e1d2c869c740, type: 2}
   m_sharedMaterial: {fileID: -3406411368475958213, guid: 21ac83a342a0b7144a87e1d2c869c740,
@@ -2190,6 +2190,12 @@ PrefabInstance:
       propertyPath: m_Material
       value: 
       objectReference: {fileID: 2100000, guid: 35630e38b4e5ffb40b44ec5348b4333f, type: 2}
+    - target: {fileID: 1990811466485916791, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
+      propertyPath: serializationData.Prefab
+      value: 
+      objectReference: {fileID: 1990811466485916791, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
     - target: {fileID: 2035065524165189080, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
       propertyPath: serializedProgramAsset
@@ -2877,6 +2883,12 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 3592716463043315850, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
+    - target: {fileID: 3618629128547288658, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
+      propertyPath: serializationData.Prefab
+      value: 
+      objectReference: {fileID: 3618629128547288658, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
     - target: {fileID: 3712311682317375158, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
       propertyPath: m_Material
@@ -2993,7 +3005,7 @@ PrefabInstance:
       propertyPath: m_text
       value: 'MS-VRCSA-CBC
 
-        TABLE  v1.389'
+        TABLE  v1.390'
       objectReference: {fileID: 0}
     - target: {fileID: 3923379181097857636, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
@@ -4453,6 +4465,12 @@ PrefabInstance:
       propertyPath: m_ReceiveShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8159229299377841715, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
+      propertyPath: serializationData.Prefab
+      value: 
+      objectReference: {fileID: 8159229299377841715, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
     - target: {fileID: 8188421121906076945, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
       propertyPath: serializationData.Prefab
