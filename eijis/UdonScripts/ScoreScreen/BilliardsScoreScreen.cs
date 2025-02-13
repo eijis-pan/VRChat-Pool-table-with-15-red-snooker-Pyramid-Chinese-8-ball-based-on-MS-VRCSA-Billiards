@@ -1019,14 +1019,14 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         int i = 0;
         string[] p1scores = p1row.GetScoreTextStrings();
         string[] p2scores = p2row.GetScoreTextStrings();
-        values[i++] = footerRow.GetPoint().ToString();
+        values[i++] = footerRow.GetSafeNoPocketShotCount().ToString();
         values[i++] = p1scores[0];
         values[i++] = p1scores[2];
         values[i++] = p1scores[1];
         values[i++] = p2scores[0];
         values[i++] = p2scores[2];
         values[i++] = p2scores[1];
-        values[i++] = footerRow.GetSafeNoPocketShotCount().ToString();
+        values[i++] = footerRow.GetPoint().ToString();
 
         /*
         // プレイヤー1,プレイヤー2,セーフティ1,得点1,得点2,セーフティ2,イニング,ボールデッド
@@ -1123,14 +1123,14 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         int i = 0;
         string[] p1scores = p1row.GetScoreTextStrings();
         string[] p2scores = p2row.GetScoreTextStrings();
-        values[i++] = footerRow.GetPoint().ToString();
+        values[i++] = footerRow.GetSafeNoPocketShotCount().ToString();
         values[i++] = p1scores[0];
         values[i++] = p1scores[2];
         values[i++] = p1scores[1];
         values[i++] = p2scores[0];
         values[i++] = p2scores[2];
         values[i++] = p2scores[1];
-        values[i++] = footerRow.GetSafeNoPocketShotCount().ToString();
+        values[i++] = footerRow.GetPoint().ToString();
 
         ResultCommentTextInputField.text = $"{player1} ({values[1]}/{values[3]}) vs {player2} ({values[4]}/{values[6]})\nイニング{values[0]} セーフティ{values[2]}-{values[5]} ボールデッド{values[7]}";
     }
