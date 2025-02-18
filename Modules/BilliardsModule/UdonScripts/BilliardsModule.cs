@@ -38,6 +38,7 @@
 // #define EIJIS_DEBUG_SEMIAUTO_CALL
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_FINDLOGIC
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION
+// #define EIJIS_DEBUG_DUPLICATE_INNING_COUNT
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -2831,6 +2832,9 @@ public class BilliardsModule : UdonSharpBehaviour
                 );
             scoreScreen.clearOffsets();
         }
+#if EIJIS_DEBUG_DUPLICATE_INNING_COUNT
+        _LogInfo($"EIJIS_DEBUG ballsP[2] = {ballsP[2]}, ballsP[9] = {ballsP[9]}");
+#endif
     }
 
     private void onRemotePauseStateChanged(bool pausedSynced)
@@ -4357,6 +4361,12 @@ public class BilliardsModule : UdonSharpBehaviour
             // 9 ball (mnbk)
             initialBallsPocketed[11] = initialBallsPocketed[1];
             initialPositions[11] = initialPositions[1];
+#if EIJIS_DEBUG_DUPLICATE_INNING_COUNT
+            _LogInfo($"EIJIS_DEBUG initialPositions[11][2] = {initialPositions[11][2]}, initialPositions[11][9] = {initialPositions[11][9]}");
+            initialPositions[11][2] = new Vector3(0.89f, 0, -0.47f);
+            initialPositions[11][9] = new Vector3(0.96f, 0, -0.47f);
+            _LogInfo($"EIJIS_DEBUG initialPositions[11][2] = {initialPositions[11][2]}, initialPositions[11][9] = {initialPositions[11][9]}");
+#endif
         }
 #endif
 
