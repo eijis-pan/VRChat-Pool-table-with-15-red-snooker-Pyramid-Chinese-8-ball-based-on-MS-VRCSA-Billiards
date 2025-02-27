@@ -11,6 +11,7 @@
 #define EIJIS_10BALL
 #define EIJIS_MNBK_AUTOCOUNTER
 #define EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+// #define EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
 
 // #define EIJIS_WINNER_TEXT_HOTFIX
 
@@ -1037,6 +1038,8 @@ public class NetworkingManager : UdonSharpBehaviour
         bufferMessages(false);
     }
 
+#endif
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
     public void _RequestBufferMessages()
     {
 #if EIJIS_DEBUG_GAMESTATE_SYNC
@@ -1044,6 +1047,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #endif
         bufferMessages(false);
     }
+    
 #endif
     public void _ForceLoadFromState
     (

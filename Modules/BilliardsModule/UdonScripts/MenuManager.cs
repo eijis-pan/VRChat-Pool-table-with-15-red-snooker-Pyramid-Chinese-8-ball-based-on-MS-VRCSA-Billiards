@@ -143,11 +143,11 @@ public class MenuManager : UdonSharpBehaviour
             _DisableStartMenu();
         }
 #else
+        _EnableStartMenu();
 #endif
 #if EIJIS_MNBK_AUTOCOUNTER
         _DisableMenuMnbkSkillLevel();
 #endif
-        _EnableStartMenu();
 
         cueSizeText.text = (cueSizeSlider.value / 10f).ToString("F1");
     }
