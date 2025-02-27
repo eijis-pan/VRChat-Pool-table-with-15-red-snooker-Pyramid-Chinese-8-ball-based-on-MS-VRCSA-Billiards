@@ -18,6 +18,7 @@
 #define EIJIS_MNBK_SWITCH_9BALL_US
 // #define EIJIS_MNBK_MCB
 #define EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+// #define EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
 
 // #define EIJIS_WINNER_TEXT_HOTFIX
 
@@ -494,7 +495,9 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public bool pausedLocal;
     [NonSerialized] public GameObject callSafetyOrb;
     [NonSerialized] public GameObject pauseOrb;
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
     [NonSerialized] public bool messageToLateJoinerFlgLocal;
+#endif
 
     public readonly byte[] MNBK_SKILLLEVEL_POINTS =
     {
@@ -847,7 +850,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
     }
 
-#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
     // private void DelayInit()
     // {
     //     if (!Networking.LocalPlayer.isMaster)
@@ -1657,7 +1660,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_TABLE_LABEL
         Debug.Log("[BilliardsModule" + logLabel + "] latest game state is " + networkingManager._EncodeGameState());
 #endif
-#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
 #if EIJIS_DEBUG_GAMESTATE_SYNC
         _LogInfo($"EIJIS_DEBUG  messageToLateJoinerFlgLocal = {messageToLateJoinerFlgLocal}, messageToLateJoinerFlgSynced = {networkingManager.messageToLateJoinerFlgSynced}, gameStateLocal = {gameStateLocal}");
         // _LogInfo($"EIJIS_DEBUG  graphicsManager.winnerText.text = {graphicsManager.winnerText.text}");
