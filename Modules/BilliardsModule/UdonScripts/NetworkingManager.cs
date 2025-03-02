@@ -9,6 +9,8 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
+#define EIJIS_BANKING
+
 #define EIJIS_MNBK_AUTOCOUNTER
 #define EIJIS_MNBK_GOAL_POINT_PERSISTENCE
 // #define EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
@@ -95,8 +97,8 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_PYRAMID || EIJIS_CAROM
     // additional games 4 is Snooker15Red, 5 is RussianPyramid, 6-9 is 3-Cushion(2,1,0-Cushion)
 #endif
-#if EIJIS_10BALL || EIJIS_MNBK_AUTOCOUNTER
-    // additional games 10 is 10ball, 11 is Mnbk9ball
+#if EIJIS_10BALL || EIJIS_BANKING || EIJIS_MNBK_AUTOCOUNTER
+    // additional games 10 is 10ball, 11 is Banking, 12 is Mnbk9ball
 #endif
     [UdonSynced][NonSerialized] public byte gameModeSynced;
 
@@ -1104,8 +1106,17 @@ public class NetworkingManager : UdonSharpBehaviour
     private void swapFourBallCueBalls()
     {
 #if EIJIS_CAROM
+#if EIJIS_BANKING
+        if (gameModeSynced != 2 && gameModeSynced != 3 && 
+            gameModeSynced != BilliardsModule.GAMEMODE_0CUSHION && 
+            gameModeSynced != BilliardsModule.GAMEMODE_1CUSHION && 
+            gameModeSynced != BilliardsModule.GAMEMODE_2CUSHION && 
+            gameModeSynced != BilliardsModule.GAMEMODE_3CUSHION &&
+            gameModeSynced != BilliardsModule.GAMEMODE_BANKING) return;
+#else
         if (gameModeSynced != 2 && gameModeSynced != 3 && 
             gameModeSynced != 6 && gameModeSynced != 7 && gameModeSynced != 8 && gameModeSynced != 9) return;
+#endif
 #else
         if (gameModeSynced != 2 && gameModeSynced != 3) return;
 #endif
@@ -1667,6 +1678,9 @@ public class NetworkingManager : UdonSharpBehaviour
 
     public override void OnPlayerLeft(VRCPlayerApi player)
     {
+#if EIJIS_ISSUE_FIX
+        if (ReferenceEquals(null,Networking.LocalPlayer)) return;
+#endif
         if (!Networking.LocalPlayer.IsOwner(gameObject)) return;
         removePlayer(player.playerId);
     }

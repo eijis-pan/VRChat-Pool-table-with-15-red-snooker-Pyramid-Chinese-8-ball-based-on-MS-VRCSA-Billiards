@@ -8,7 +8,7 @@ namespace EijisMsVrcsaTableUtil
 {
 	public class Package
 	{
-		private static readonly string exportPackageFilePath = "CBCTable1390_mnbk_303.unityPackage";
+		private static readonly string exportPackageFilePath = "CBCTable1390_mnbk_304.unityPackage";
 		static readonly string[] exportFilePaths = 
 		{
 			//"Assets/eijis/Editor/MsVrcsaTableUtil/MNBK_table_setup.cs",
@@ -41,17 +41,20 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreen/PointCell.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreenMnbk/PlayerRow.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreenMnbk/ScoreScreenMnbk.prefab",
-			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreenMnbk/ScoreScreenMnbkMBC.prefab",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreenMnbk/ScoreScreenMnbkMBC.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/ScoreScreenMnbk/TeamPlayers.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/BilliardsModuleMnbk/snooker&pyramid&cn8&3c&10b&mnbk.prefab",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/BilliardsModuleMnbk/snooker&pyramid&cn8&3c&10b&mnbkMBC.prefab",
 			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/BilliardsModuleMnbk/snooker&pyramid&cn8&3c&10b&mnbkMBC.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Textures/BilliardsModuleMnbk/GameModesUI_Mnbk.png",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Textures/BilliardsModuleMnbk/tdesktop_stuff_call_safety.png",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Textures/BilliardsModuleMnbk/tdesktop_stuff_paused.png",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Textures/BilliardsModuleMnbk/tdesktop_stuff_safety_called.png",
-			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/en.json",
-			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/ja.json",
-			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/zh.json",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Elo/RankingSystem.cs",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/TableHook/SettingLoader.cs",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/en.Json",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/ja.Json",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/zh.Json",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Prefab/old/snooker&pyramid&cn8&3c.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Prefab/snooker&pyramid&cn8&3c&10b.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/ht8b_materials/procedural/tballs_3Cushion_YellowCueBall.png",
@@ -72,6 +75,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/ButtonPause.asset",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/ButtonPause.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/CueController.cs",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/ColorDownload.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/DesktopManager.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/GraphicsManager.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/MenuManager.cs",
@@ -88,7 +92,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/UdonScripts/ScoreScreen/TeamPlayers.cs"
 		};
 		
-		[MenuItem("GameObject/MNBK/ExportPackage303", false, 0)]
+		[MenuItem("GameObject/MNBK/ExportPackage304", false, 0)]
 		private static void ExportPackage_Menu(MenuCommand command)
 		{
 			try

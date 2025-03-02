@@ -14,10 +14,12 @@
 #define EIJIS_SEMIAUTOCALL_E
 #define EIJIS_10BALL
 #define CHEESE_ISSUE_FIX
+#define EIJIS_BANKING
+
 #define EIJIS_MNBK_AUTOCOUNTER
 #define EIJIS_MNBK_SCORE_ERROR_DETECTION
 #define EIJIS_MNBK_SWITCH_9BALL_US
-// #define EIJIS_MNBK_MCB
+#define EIJIS_MNBK_MCB
 #define EIJIS_MNBK_GOAL_POINT_PERSISTENCE
 // #define EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
 
@@ -164,9 +166,9 @@ public class BilliardsModule : UdonSharpBehaviour
     // globals
     [NonSerialized] public AudioSource aud_main;
     [NonSerialized] public UdonBehaviour callbacks;
-#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || (EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US)
-    private Vector3[][] initialPositions = new Vector3[12][];
-    private uint[] initialBallsPocketed = new uint[12];
+#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || (EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US)
+    private Vector3[][] initialPositions = new Vector3[13][];
+    private uint[] initialBallsPocketed = new uint[13];
 #else
     private Vector3[][] initialPositions = new Vector3[5][];
     private uint[] initialBallsPocketed = new uint[5];
@@ -436,6 +438,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_10BALL
     [NonSerialized] public const uint GAMEMODE_10BALL = 10u;
 #endif
+#if EIJIS_BANKING
+    [NonSerialized] public const uint GAMEMODE_BANKING = 11u;
+#endif
 #if EIJIS_CUEBALLSWAP || EIJIS_PUSHOUT || EIJIS_CALLSHOT
     [NonSerialized] public int stateIdLocal;
 #endif
@@ -477,7 +482,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_MNBK_AUTOCOUNTER
 #if EIJIS_MNBK_SWITCH_9BALL_US
-    [NonSerialized] public const uint GAMEMODE_MNBK9BALL = 11u;
+    [NonSerialized] public const uint GAMEMODE_MNBK9BALL = 12u;
 #else
     [NonSerialized] public const uint GAMEMODE_MNBK9BALL = 1u;
 #endif
@@ -600,6 +605,9 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public bool is2Cusion = false;
     [NonSerialized] public bool is1Cusion = false;
     [NonSerialized] public bool is0Cusion = false;
+#endif
+#if EIJIS_BANKING
+    [NonSerialized] public bool isBanking = false;
 #endif
     [NonSerialized] public bool isPracticeMode = false;
     [NonSerialized] public bool isPlayer = false;
@@ -1836,8 +1844,14 @@ public class BilliardsModule : UdonSharpBehaviour
             is2Cusion = gameModeLocal == GAMEMODE_2CUSHION;
             is1Cusion = gameModeLocal == GAMEMODE_1CUSHION;
             is0Cusion = gameModeLocal == GAMEMODE_0CUSHION;
+#if EIJIS_BANKING
+            isBanking = gameModeLocal == GAMEMODE_BANKING;
+            cushionHitGoal = is0Cusion ? 0 : ((is1Cusion || isBanking) ? 1 : (is2Cusion ? 2 : 3));
+            is4Ball = isJp4Ball || isKr4Ball || is3Cusion || is2Cusion || is1Cusion || is0Cusion || isBanking;
+#else
             cushionHitGoal = is0Cusion ? 0 : (is1Cusion ? 1 : (is2Cusion ? 2 : 3));
             is4Ball = isJp4Ball || isKr4Ball || is3Cusion || is2Cusion || is1Cusion || is0Cusion;
+#endif
 #else
             is4Ball = isJp4Ball || isKr4Ball;
 #endif
@@ -2274,6 +2288,9 @@ public class BilliardsModule : UdonSharpBehaviour
                         if (isSnooker) personalData.gameCountSnooker++;
                         else personalData.gameCount++;
                         personalData.loseCount++;
+#if EIJIS_ISSUE_FIX
+                        if (DG_LAB != null)
+#endif
                         DG_LAB.SendCustomEvent("JustShock");
                     }
                 }
@@ -2921,6 +2938,23 @@ public class BilliardsModule : UdonSharpBehaviour
             cushionBeforeSecondBall++;
         }
 #endif
+#if EIJIS_BANKING
+        if (isBanking && ball == 0 && firstHit == 0)
+        {
+#if EIJIS_DEBUG_BANKING
+            _LogInfo($"  _TriggerBounceCushion() pos={pos} k_TABLE_WIDTH={k_TABLE_WIDTH}");
+            _LogInfo($"  _TriggerBounceCushion() diff={k_TABLE_WIDTH - Math.Abs(pos.x)} k_BALL_RADIUS={k_BALL_RADIUS}");
+#endif
+            if (k_TABLE_WIDTH - pos.x < k_BALL_RADIUS * 1.1)
+            {
+                if (cushionBeforeSecondBall < cushionHitGoal)
+                {
+                    graphicsManager._SpawnCushionTouch(pos, cushionBeforeSecondBall);
+                }
+                cushionBeforeSecondBall++;
+            }
+        }
+#endif
     }
     public void _TriggerCollision(int srcId, int dstId)
     {
@@ -2997,6 +3031,9 @@ public class BilliardsModule : UdonSharpBehaviour
                 //Snooker
                 if (firstHit == 0) firstHit = dstId;
                 break;
+#if EIJIS_BANKING
+            case GAMEMODE_BANKING:
+#endif
 #if EIJIS_CAROM
             case GAMEMODE_3CUSHION:
             case GAMEMODE_2CUSHION:
@@ -3707,6 +3744,35 @@ public class BilliardsModule : UdonSharpBehaviour
                 }
 #endif
             }
+#if EIJIS_BANKING
+            else if (isBanking)
+            {
+                isObjectiveSink = false;
+                isOpponentSink = false;
+                foulCondition = teamIdLocal == 0;
+                bool success = (!isScratch && firstHit == 0 && (0 < cushionBeforeSecondBall));
+                fbScoresLocal[teamIdLocal] = (byte)(success ? 1 : 0);                    
+                winCondition = (teamIdLocal != 0 && success && ((0 == fbScoresLocal[0]) || (k_TABLE_WIDTH + ballsP[0].x < k_TABLE_WIDTH + ballsP[13].x)));
+                deferLossCondition = (teamIdLocal != 0 && (0 < fbScoresLocal[0]) && (!success || (k_TABLE_WIDTH + ballsP[0].x > k_TABLE_WIDTH + ballsP[13].x)));
+
+                if (!success && teamIdLocal == 0)
+                {
+                    ballsP[0] = initialPositions[gameModeLocal][0];
+                    ballsP[13] = initialPositions[gameModeLocal][13];
+                }
+
+                if (teamIdLocal != 0 && !winCondition && !deferLossCondition)
+                {
+                    foulCondition = true;
+                    ballsP[0] = initialPositions[gameModeLocal][13];
+                    ballsP[13] = initialPositions[gameModeLocal][0];
+                    fbScoresLocal[0] = 0;
+                    fbScoresLocal[1] = 0;
+                }
+                
+                nextTurnBlocked = foulCondition;
+            }
+#endif
             else if (is4Ball)
             {
                 isObjectiveSink = fbMadePoint;
@@ -4122,6 +4188,9 @@ public class BilliardsModule : UdonSharpBehaviour
                 else
                 {
                     personalData.pocketCount += count;
+#if EIJIS_BANKING
+                    if(!is4Ball)
+#endif
                     personalData.inningCount++;
                 }
 
@@ -4183,6 +4252,9 @@ public class BilliardsModule : UdonSharpBehaviour
             HeightBreak = 0;
         }
         else
+#if EIJIS_BANKING
+        if(!is4Ball)
+#endif
             personalData.shotCount++;
 
         personalData.SaveData();
@@ -4290,8 +4362,8 @@ public class BilliardsModule : UdonSharpBehaviour
         float k_BALL_PL_X = k_BALL_RADIUS; // break placement X
         float k_BALL_PL_Y = Mathf.Sin(60 * Mathf.Deg2Rad) * k_BALL_DIAMETRE; // break placement Y
         float quarterTable = k_TABLE_WIDTH / 2;
-#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || (EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US)
-        for (int i = 0; i < 12; i++)
+#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || (EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US)
+        for (int i = 0; i < 13; i++)
 #else
         for (int i = 0; i < 5; i++)
 #endif
@@ -4358,8 +4430,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US
         {
             // 9 ball (mnbk)
-            initialBallsPocketed[11] = initialBallsPocketed[1];
-            initialPositions[11] = initialPositions[1];
+            initialBallsPocketed[12] = initialBallsPocketed[1];
+            initialPositions[12] = initialPositions[1];
         }
 #endif
 
@@ -4434,6 +4506,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #else
             initialBallsPocketed[2] = 0x1FFEu;
 #endif
+#if EIJIS_BANKING
+            initialPositions[2][0] = new Vector3(-quarterTable + (quarterTable * -0.5f), 0.0f, 0.0f);
+            initialPositions[2][13] = new Vector3(quarterTable + (quarterTable * 0.5f), 0.0f, 0.0f);
+#else
             if (playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1) //lag for break when both player join one side
             {
                 initialPositions[2][0] = new Vector3(-quarterTable, 0.0f, k_TABLE_HEIGHT * 0.5f);
@@ -4444,6 +4520,7 @@ public class BilliardsModule : UdonSharpBehaviour
                 initialPositions[2][0] = new Vector3(-quarterTable + (quarterTable * -0.5f), 0.0f, 0.0f);
                 initialPositions[2][13] = new Vector3(quarterTable + (quarterTable * 0.5f), 0.0f, 0.0f);
             }
+#endif
             initialPositions[2][14] = new Vector3(quarterTable, 0.0f, 0.0f);
             initialPositions[2][15] = new Vector3(-quarterTable, 0.0f, 0.0f);
         }
@@ -4521,6 +4598,19 @@ public class BilliardsModule : UdonSharpBehaviour
                     );
                 }
             }
+        }
+#endif
+#if EIJIS_BANKING
+        
+        {
+            // Banking
+#if EIJIS_MANY_BALLS
+            initialBallsPocketed[11] = 0xFFFFDFFEu;
+#else
+            initialBallsPocketed[11] = 0xDFFEu;
+#endif
+            initialPositions[11][0] = new Vector3(-quarterTable, 0.0f, k_TABLE_HEIGHT * 0.5f);
+            initialPositions[11][13] = new Vector3(-quarterTable, 0.0f, k_TABLE_HEIGHT * -0.5f);
         }
 #endif
     }
@@ -5260,7 +5350,11 @@ public class BilliardsModule : UdonSharpBehaviour
         if ((ballsPocketedLocal & (0x1U << 15)) > 0)
         { ballsP[15] = initialPositions[2][15]; fifteenPocketed = true; }
 #if EIJIS_CAROM
+#if EIJIS_BANKING
+        fifteenPocketed = (fifteenPocketed && !is3Cusion && !is2Cusion && !is1Cusion && !is0Cusion && !isBanking);
+#else
         fifteenPocketed = (fifteenPocketed && !is3Cusion && !is2Cusion && !is1Cusion && !is0Cusion);
+#endif
 #endif
 
 #if EIJIS_CAROM

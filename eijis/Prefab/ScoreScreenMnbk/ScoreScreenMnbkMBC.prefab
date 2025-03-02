@@ -165,7 +165,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &8722430218443473821
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -592,7 +592,7 @@ PrefabInstance:
     - target: {fileID: 747688522506580354, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}
       propertyPath: m_Name
-      value: ScoreScreenMnbk Variant
+      value: ScoreScreenMnbkMBC
       objectReference: {fileID: 0}
     - target: {fileID: 998401753264300380, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}
@@ -1012,7 +1012,7 @@ PrefabInstance:
     - target: {fileID: 4244772754994611638, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -2.47
+      value: -2.4699707
       objectReference: {fileID: 0}
     - target: {fileID: 4244772754994611638, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}

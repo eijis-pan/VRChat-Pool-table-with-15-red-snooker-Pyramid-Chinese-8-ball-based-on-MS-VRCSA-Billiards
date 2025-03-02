@@ -3,7 +3,7 @@
 // #define DEBUG_EIJIS_MNBK_MCB
 
 #define EIJIS_MNBK_AUTOCOUNTER
-// #define EIJIS_MNBK_MCB
+#define EIJIS_MNBK_MCB
 
 using System;
 using UdonSharp;
@@ -1387,7 +1387,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 #if DEBUG_EIJIS_MNBK_MCB
         table._Log($"EIJIS_DEBUG BilliardsScoreScreen::UpdateMCB_Battled(players = {(4<=players.Length?players[0]+players[1]+players[2]+players[3]:string.Empty)})");
 #endif
-        if (ReferenceEquals(null, battleCheckMng)) return;
+        if (ReferenceEquals(null, battleCheckMng) || ReferenceEquals(null, MCB_BattledToggle)) return;
 
         bool hasBattled = false;
         for (int i = 0; i < players.Length; i++)
@@ -1422,7 +1422,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 #if DEBUG_EIJIS_MNBK_MCB
         table._Log($"EIJIS_DEBUG BilliardsScoreScreen::SetActiveToggleMCB_Battled(active = {active})");
 #endif
-        if (ReferenceEquals(null, battleCheckMng)) return;
+        if (ReferenceEquals(null, battleCheckMng) || ReferenceEquals(null, MCB_BattledToggle)) return;
 
         MCB_BattledToggle.gameObject.SetActive(active);
     }

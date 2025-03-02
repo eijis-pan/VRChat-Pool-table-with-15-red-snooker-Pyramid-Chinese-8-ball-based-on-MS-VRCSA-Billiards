@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define EIJIS_ISSUE_FIX
+using System;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.StringLoading;
@@ -72,6 +73,9 @@ public class SettingLoader : UdonSharpBehaviour
 
     public void _AutoReloadColor()
     {
+#if EIJIS_ISSUE_FIX
+        if (url.Length <= reloadStep) {return;}
+#endif
         VRCStringDownloader.LoadUrl(url[reloadStep], (IUdonEventReceiver)this);
     }
 

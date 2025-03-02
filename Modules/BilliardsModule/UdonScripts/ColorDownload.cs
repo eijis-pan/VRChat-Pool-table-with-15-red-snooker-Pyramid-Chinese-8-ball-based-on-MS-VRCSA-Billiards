@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define EIJIS_ISSUE_FIX
+using System;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.StringLoading;
@@ -100,6 +101,9 @@ public class ColorDownload : UdonSharpBehaviour
     //重新加载字符串函数
     public void _AutoReloadColor()
     {
+#if EIJIS_ISSUE_FIX
+        if (url.Length <= reloadStep) {return;}
+#endif
         //VRC下载API
         VRCStringDownloader.LoadUrl(url[reloadStep], (IUdonEventReceiver)this);
     }

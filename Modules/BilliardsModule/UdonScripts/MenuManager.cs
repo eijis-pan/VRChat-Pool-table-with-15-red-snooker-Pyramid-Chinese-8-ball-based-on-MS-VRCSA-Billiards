@@ -6,6 +6,8 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
+#define EIJIS_BANKING
+
 #define EIJIS_MNBK_AUTOCOUNTER
 #define EIJIS_MNBK_SWITCH_9BALL_US
 
@@ -282,6 +284,13 @@ public class MenuManager : UdonSharpBehaviour
             case BilliardsModule.GAMEMODE_0CUSHION:
                 modeName = table._translations.Get("0-Cushion");
                 selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/0Cushion");
+                table.setTransform(selectionPoint, selection, true);
+                break;
+#endif
+#if EIJIS_BANKING
+            case BilliardsModule.GAMEMODE_BANKING:
+                modeName = table._translations.Get("Banking");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Banking");
                 table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
@@ -571,6 +580,12 @@ public class MenuManager : UdonSharpBehaviour
     public void Mode0Cushion()
     {
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_0CUSHION);
+    }
+#endif
+#if EIJIS_BANKING
+    public void ModeBanking()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BANKING);
     }
 #endif
     public void ModeSnooker6Red()
