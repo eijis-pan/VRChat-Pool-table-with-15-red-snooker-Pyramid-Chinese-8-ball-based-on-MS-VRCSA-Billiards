@@ -55,8 +55,8 @@ using Cheese;
 public class BilliardsModule : UdonSharpBehaviour
 {
     [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
-#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL
-    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball)";
+#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_MNBK_AUTOCOUNTER
+    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Banking|mnbk3.0.5)";
 #else
     [NonSerialized] public readonly string VERSION = "6.0.0";
 #endif
@@ -721,8 +721,99 @@ public class BilliardsModule : UdonSharpBehaviour
             tableHook.AddTranslation(_translations);
             tableHook.AddBilliardsModule(this);
         }
+#if EIJIS_MNBK_AUTOCOUNTER
+
+        if (Networking.LocalPlayer.isMaster)
+        {
+            gameStateLocal = 0;
+        }
+        else
+        {
+            gameStateLocal = 255;
+            gameModeLocal = 0xFFFFFFFF;
+            // SendCustomEventDelayedSeconds(nameof(DelayInit), UnityEngine.Random.Range(1f, 5f));
+        }
+#endif
     }
 
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
+    // private void DelayInit()
+    // {
+    //     if (!Networking.LocalPlayer.isMaster)
+    //     {
+    //         onRemoteGameStateChanged(networkingManager.gameStateSynced);
+    //     }    
+    // }
+
+#if EIJIS_WINNER_TEXT_HOTFIX
+    public string tmpWinnerText = null;
+#endif
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+        _LogInfo("EIJIS_DEBUG BilliardsModule::OnPlayerJoined()");
+        // _LogInfo($"EIJIS_DEBUG  graphicsManager.winnerText.text = {graphicsManager.winnerText.text}");
+        // string winnerText = graphicsManager.dumpWinnerText();
+#endif
+        messageToLateJoinerFlgLocal = false;
+        
+        if (ReferenceEquals(null, player))
+        {
+            return;
+        }
+        
+        if (player.isLocal)
+        {
+#if EIJIS_WINNER_TEXT_HOTFIX
+            tmpWinnerText = graphicsManager.getWinnerText();
+#endif
+            return;
+        }
+        
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (ReferenceEquals(null, localPlayer))
+        {
+            return;
+        }
+        
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+        // _LogInfo($"EIJIS_DEBUG  isMyTurn and primary player = {isMyTurn() && _GetPlayerSlot(localPlayer, playerIDsLocal) < 2}");
+        _LogInfo($"EIJIS_DEBUG  isMyTurn = {isMyTurn()}");
+        _LogInfo($"EIJIS_DEBUG  _AllPlayersOffline and master = {_AllPlayersOffline() && localPlayer.isMaster}");
+#endif
+
+        // if ((isMyTurn() && _GetPlayerSlot(localPlayer, playerIDsLocal) < 2)
+        // if ((isMyTurn())
+        //     || (_AllPlayersOffline() && localPlayer.isMaster))
+        {
+            // messageToLateJoinerFlgLocal = true;
+            // networkingManager.messageToLateJoinerFlgSynced = true;
+
+            if (_AllPlayersOffline() && localPlayer.isMaster)
+            {
+                // networkingManager._RequestBufferMessages();
+                // SendCustomEventDelayedSeconds(nameof(networkingManager._RequestBufferMessages), UnityEngine.Random.Range(1f, 5f));
+                float delaySec = UnityEngine.Random.Range(1f, 5f);
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+                // delaySec += 10.0f;
+#endif
+                SendCustomEventDelayedSeconds(nameof(DelayRequestBufferMessages), delaySec);
+            }
+        }
+    }
+
+    public void DelayRequestBufferMessages()
+    {
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+        _LogInfo("EIJIS_DEBUG BilliardsModule::DelayRequestBufferMessages()");
+#endif
+        messageToLateJoinerFlgLocal = true;
+        networkingManager.messageToLateJoinerFlgSynced = true;
+        networkingManager._RequestBufferMessages();
+        networkingManager._FlushBuffer(); // ignore localPlayerDistant
+    }
+
+#endif
     private void OnDisable()
     {
         checkingDistant = false;
@@ -1909,6 +2000,16 @@ public class BilliardsModule : UdonSharpBehaviour
                     DG_LAB.SendCustomEvent("JustShock");
                 }
             }
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_MCB
+            if (!ReferenceEquals(null, scoreScreen) && isMnbk9Ball)
+            {
+                string p3str = "No one";
+                VRCPlayerApi looser = VRCPlayerApi.GetPlayerById(playerIDsCached[winningTeamLocal ^ 0x1u]);
+                if (Utilities.IsValid(looser))
+                    p3str = looser.displayName;
+                scoreScreen.SetMCB_Battled(p1str, p3str);
+            }
+#endif
         }
 
         //UP 24/6/15  重构by cheese  24/9/26 难以想象居然撑了三个月
@@ -3488,7 +3589,11 @@ public class BilliardsModule : UdonSharpBehaviour
                 else
                 {
                     personalData.pocketCount += count;
+#if EIJIS_ISSUE_FIX
+                    if(!is4Ball) // include caroms
+#else
                     if(!is4Ball && !is1Cusion && !is2Cusion && !is3Cusion)
+#endif
                         personalData.inningCount++;
                 }
 
@@ -3549,7 +3654,11 @@ public class BilliardsModule : UdonSharpBehaviour
             }
             HeightBreak = 0;
         }
+#if EIJIS_ISSUE_FIX
+        else if(!is4Ball) // include caroms
+#else
         else if(!is4Ball && !is1Cusion && !is2Cusion && !is3Cusion)
+#endif
             personalData.shotCount++;
 
         personalData.SaveData();
