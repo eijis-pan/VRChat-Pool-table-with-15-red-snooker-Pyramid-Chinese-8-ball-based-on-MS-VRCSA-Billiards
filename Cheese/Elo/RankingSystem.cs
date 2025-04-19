@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define EIJIS_ISSUE_FIX
+using System;
 using System.Text;
 using TMPro;
 using UdonSharp;
@@ -54,6 +55,9 @@ public class RankingSystem : UdonSharpBehaviour
 
 	void Start()
 	{
+#if EIJIS_ISSUE_FIX
+		if (ReferenceEquals(null, GameObject.Find("CC20"))) {return;}
+#endif
 		_cc20 = GameObject.Find("CC20").GetComponent<CC20>();
 	}
 
@@ -82,6 +86,9 @@ public class RankingSystem : UdonSharpBehaviour
 
 		Array.Copy(iv32, iv12, 12);
 
+#if EIJIS_ISSUE_FIX
+		if (ReferenceEquals(null,_cc20)) {return;}
+#endif
 		_cc20._Init(key, iv12);
 
 		var modeString = mapModeName(ballMode);

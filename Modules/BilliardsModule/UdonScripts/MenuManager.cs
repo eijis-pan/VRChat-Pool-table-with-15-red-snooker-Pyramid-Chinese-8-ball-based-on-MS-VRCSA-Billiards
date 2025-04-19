@@ -6,6 +6,13 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
+#define EIJIS_BANKING
+
+#define EIJIS_MNBK_AUTOCOUNTER
+#define EIJIS_MNBK_SWITCH_9BALL_US
+
+// #define EIJIS_DEBUG_GAMESTATE_SYNC
+// #define EIJIS_DEBUG_DEFAULT_GAMEMODE
 
 using System;
 using UdonSharp;
@@ -22,6 +29,9 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private GameObject menuStart;
     [SerializeField] private GameObject menuJoinLeave;
     [SerializeField] private GameObject menuLobby;
+#if EIJIS_MNBK_AUTOCOUNTER
+    [SerializeField] private GameObject menuMnbkSkillLevel;
+#endif
     [SerializeField] private GameObject menuLoad;
     [SerializeField] private GameObject menuOther;
     [SerializeField] private GameObject menuUndo;
@@ -43,12 +53,19 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private TextMeshProUGUI timelimitDisplay;
     [SerializeField] private TextMeshProUGUI tableDisplay;
     [SerializeField] private TextMeshProUGUI physicsDisplay;
+#if EIJIS_MNBK_AUTOCOUNTER
+    [SerializeField] private TextMeshProUGUI skillLevelOrangeDisplay;
+    [SerializeField] private TextMeshProUGUI skillLevelBlueDisplay;
+#endif
 
     private BilliardsModule table;
 
     private uint selectedTimer;
     private uint selectedTable;
     private uint selectedPhysics;
+#if EIJIS_MNBK_AUTOCOUNTER
+    private uint[] selectedSkillLevel = new uint[2];
+#endif
 
     private Vector3 joinMenuPosition;
     private Quaternion joinMenuRotation;
@@ -58,6 +75,9 @@ public class MenuManager : UdonSharpBehaviour
     public void _Init(BilliardsModule table_)
     {
         table = table_;
+#if EIJIS_DEBUG_GAMESTATE_SYNC || EIJIS_DEBUG_DEFAULT_GAMEMODE
+        table._LogInfo($"EIJIS_DEBUG MenuManager::_Init() Initialized = {Initialized}, table.gameModeLocal = {table.gameModeLocal}");
+#endif
 
         if (!Initialized)
         {
@@ -78,6 +98,20 @@ public class MenuManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
             buttonCallLockOffColor = buttonCallLock.GetComponent<Image>().color;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+            if (ReferenceEquals(null, menuMnbkSkillLevel))
+            {
+                table._LogInfo("  MnbkSkillLevelMenu object not set.");
+            }
+            if (ReferenceEquals(null, skillLevelOrangeDisplay))
+            {
+                table._LogInfo("  skillLevelOrangeDisplay object not set.");
+            }
+            if (ReferenceEquals(null, skillLevelBlueDisplay))
+            {
+                table._LogInfo("  skillLevelBlueDisplay object not set.");
+            }
+#endif
         }
 
         _RefreshTimer();
@@ -86,6 +120,9 @@ public class MenuManager : UdonSharpBehaviour
         _RefreshToggleSettings();
         _RefreshLobby();
         _RefreshPlayerList();
+#if EIJIS_MNBK_AUTOCOUNTER
+        _RefreshSkillLevel();
+#endif
 
         _DisableMenuJoinLeave();
         _DisableLobbyMenu();
@@ -98,7 +135,21 @@ public class MenuManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
         _DisableCallLockMenu();
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        if (Networking.LocalPlayer.isMaster)
+        {
+            _EnableStartMenu();
+        }
+        else
+        {
+            _DisableStartMenu();
+        }
+#else
         _EnableStartMenu();
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        _DisableMenuMnbkSkillLevel();
+#endif
 
         cueSizeText.text = (cueSizeSlider.value / 10f).ToString("F1");
     }
@@ -174,9 +225,14 @@ public class MenuManager : UdonSharpBehaviour
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 1:
+#if EIJIS_MNBK_AUTOCOUNTER && !EIJIS_MNBK_SWITCH_9BALL_US
+                modeName = table._translations.Get("9 Ball (MNBK)");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/9ball");
+#else
                 modeName = table._translations.Get("9 Ball");
                 //modeName = "9 Ball";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/9ball");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/9ballUsa");
+#endif
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 2:
@@ -231,6 +287,13 @@ public class MenuManager : UdonSharpBehaviour
                 table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
+#if EIJIS_BANKING
+            case BilliardsModule.GAMEMODE_BANKING:
+                modeName = table._translations.Get("Banking");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Banking");
+                table.setTransform(selectionPoint, selection, true);
+                break;
+#endif
 #if EIJIS_10BALL
             case BilliardsModule.GAMEMODE_10BALL:
                 modeName = table._translations.Get("10 Ball");
@@ -239,8 +302,25 @@ public class MenuManager : UdonSharpBehaviour
                 table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_SWITCH_9BALL_US
+            case BilliardsModule.GAMEMODE_MNBK9BALL:
+                modeName = table._translations.Get("9 Ball (MNBK)");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/9ballMnbk");
+                table.setTransform(selectionPoint, selection, true);
+                break;
+#endif
         }
         gameModeDisplay.text = modeName;
+#if EIJIS_MNBK_AUTOCOUNTER
+        if (table.gameStateLocal == 1 && table.isPlayer && mode == BilliardsModule.GAMEMODE_MNBK9BALL)
+        {
+            _EnableMenuMnbkSkillLevel();
+        }
+        else
+        {
+            _DisableMenuMnbkSkillLevel();
+        }
+#endif
     }
     public void _RefreshPhysics()
     {
@@ -252,6 +332,41 @@ public class MenuManager : UdonSharpBehaviour
         tableDisplay.text = table._translations.Get((string)table.tableModels[table.tableModelLocal].GetProgramVariable("TABLENAME")); // auto translate by cheese
     }
 
+#if EIJIS_MNBK_AUTOCOUNTER
+    public void _RefreshSkillLevel()
+    {
+        if (!ReferenceEquals(null, skillLevelOrangeDisplay))
+        {
+            int teamId = 0;
+            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (byte)(table.player1GoalLocal));
+            selectedSkillLevel[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                skillLevelOrangeDisplay.text = $"{table.MNBK_SKILLLEVEL_LABELS[index]} : {table.MNBK_SKILLLEVEL_POINTS[index]}";
+            }
+            else
+            {
+                skillLevelOrangeDisplay.text = $"{table.player1GoalLocal}";
+            }
+        }
+
+        if (!ReferenceEquals(null, skillLevelBlueDisplay))
+        {
+            int teamId = 1;
+            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (byte)(table.player2GoalLocal));
+            selectedSkillLevel[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                skillLevelBlueDisplay.text = $"{table.MNBK_SKILLLEVEL_LABELS[index]} : {table.MNBK_SKILLLEVEL_POINTS[index]}";
+            }
+            else
+            {
+                skillLevelBlueDisplay.text = $"{table.player2GoalLocal}";
+            }
+        }
+    }
+    
+#endif
     public void _RefreshToggleSettings()
     {
         TeamsToggle_button.SetIsOnWithoutNotify(table.teamsLocal);
@@ -285,6 +400,9 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _RefreshMenu()
     {
+#if EIJIS_DEBUG_GAMESTATE_SYNC || EIJIS_DEBUG_DEFAULT_GAMEMODE
+        table._LogInfo($"EIJIS_DEBUG MenuManager::_RefreshMenu() table.localPlayerDistant = {table.localPlayerDistant}");
+#endif
         if (table.localPlayerDistant)
         {
             _DisableLobbyMenu();
@@ -292,8 +410,14 @@ public class MenuManager : UdonSharpBehaviour
             _DisableLoadMenu();
             _DisableUndoMenu();
             _DisableMenuJoinLeave();
+#if EIJIS_MNBK_AUTOCOUNTER
+            _DisableMenuMnbkSkillLevel();
+#endif
             return;
         }
+#if EIJIS_DEBUG_GAMESTATE_SYNC || EIJIS_DEBUG_DEFAULT_GAMEMODE
+        table._LogInfo($"EIJIS_DEBUG  table.gameStateLocal = {table.gameStateLocal}, table.gameModeLocal = {table.gameModeLocal}");
+#endif
         Transform table_base = table._GetTableBase().transform;
         Transform menu_Join = menuJoinLeave.transform;
         switch (table.gameStateLocal)
@@ -304,6 +428,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_MNBK_AUTOCOUNTER
+                _DisableMenuMnbkSkillLevel();
+#endif
                 break;
             case 1://lobby
                 if (table.isPlayer)
@@ -319,6 +446,12 @@ public class MenuManager : UdonSharpBehaviour
                 menu_Join.localScale = joinMenuScale;
                 _EnableMenuJoinLeave();
                 _RefreshTeamJoinButtons();
+#if EIJIS_MNBK_AUTOCOUNTER
+                if (table.isPlayer && table.gameModeLocal == BilliardsModule.GAMEMODE_MNBK9BALL)
+                    _EnableMenuMnbkSkillLevel();
+                else
+                    _DisableMenuMnbkSkillLevel();
+#endif
                 break;
             case 2://game live
                 _DisableLobbyMenu();
@@ -348,6 +481,9 @@ public class MenuManager : UdonSharpBehaviour
                     _EnableMenuJoinLeave();
                     _RefreshTeamJoinButtons();
                 }
+#if EIJIS_MNBK_AUTOCOUNTER
+                _DisableMenuMnbkSkillLevel();
+#endif
                 break;
             case 3://game ended/reset
                 _DisableLobbyMenu();
@@ -355,6 +491,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_MNBK_AUTOCOUNTER
+                _DisableMenuMnbkSkillLevel();
+#endif
                 break;
         }
         Transform leave_Button = menu_Join.Find("LeaveButton");
@@ -405,7 +544,11 @@ public class MenuManager : UdonSharpBehaviour
     }
     public void Mode9Ball()
     {
+#if EIJIS_MNBK_AUTOCOUNTER && !EIJIS_MNBK_SWITCH_9BALL_US
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_MNBK9BALL);
+#else
         table._TriggerGameModeChanged(1);
+#endif
     }
 #if EIJIS_10BALL
     public void Mode10Ball()
@@ -439,6 +582,12 @@ public class MenuManager : UdonSharpBehaviour
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_0CUSHION);
     }
 #endif
+#if EIJIS_BANKING
+    public void ModeBanking()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BANKING);
+    }
+#endif
     public void ModeSnooker6Red()
     {
         table._TriggerGameModeChanged(4);
@@ -447,6 +596,12 @@ public class MenuManager : UdonSharpBehaviour
     public void ModePyramid()
     {
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_PYRAMID);
+    }
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    public void Mode9BallMnbk()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_MNBK9BALL);
     }
 #endif
     [SerializeField] private Toggle TeamsToggle_button;
@@ -568,6 +723,52 @@ public class MenuManager : UdonSharpBehaviour
         cueSizeText.text = newScale.ToString("F1");
     }
 
+#if EIJIS_MNBK_AUTOCOUNTER
+    public void OrangeSkillLevelRight()
+    {
+        uint teamId = 0;
+        if (selectedSkillLevel[teamId] < (table.MNBK_SKILLLEVEL_POINTS.Length - 1))
+            selectedSkillLevel[teamId]++;
+        else
+            selectedSkillLevel[teamId] = 0;
+
+        table._TriggerSkillLevelChanged(teamId, selectedSkillLevel[teamId]);
+    }
+    
+    public void OrangeSkillLevelLeft()
+    {
+        uint teamId = 0;
+        if (selectedSkillLevel[teamId] > 0)
+            selectedSkillLevel[teamId]--;
+        else
+            selectedSkillLevel[teamId] = (uint)(table.MNBK_SKILLLEVEL_POINTS.Length - 1);
+
+        table._TriggerSkillLevelChanged(teamId, selectedSkillLevel[teamId]);
+    }
+
+    public void BlueSkillLevelRight()
+    {
+        uint teamId = 1;
+        if (selectedSkillLevel[teamId] < (table.MNBK_SKILLLEVEL_POINTS.Length - 1))
+            selectedSkillLevel[teamId]++;
+        else
+            selectedSkillLevel[teamId] = 0;
+
+        table._TriggerSkillLevelChanged(teamId, selectedSkillLevel[teamId]);
+    }
+    
+    public void BlueSkillLevelLeft()
+    {
+        uint teamId = 1;
+        if (selectedSkillLevel[teamId] > 0)
+            selectedSkillLevel[teamId]--;
+        else
+            selectedSkillLevel[teamId] = (uint)(table.MNBK_SKILLLEVEL_POINTS.Length - 1);
+
+        table._TriggerSkillLevelChanged(teamId, selectedSkillLevel[teamId]);
+    }
+    
+#endif
     [NonSerialized] public UIButton inButton;
     public void _OnButtonPressed() { onButtonPressed(inButton); }
     private void onButtonPressed(UIButton button)
@@ -761,11 +962,17 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _EnableStartMenu()
     {
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+        table._LogInfo("EIJIS_DEBUG MenuManager::_EnableStartMenu()");
+#endif
         menuStart.SetActive(true);
     }
 
     public void _DisableStartMenu()
     {
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+        table._LogInfo("EIJIS_DEBUG MenuManager::_DisableStartMenu()");
+#endif
         menuStart.SetActive(false);
     }
 
@@ -859,6 +1066,18 @@ public class MenuManager : UdonSharpBehaviour
     public void _StateChangeCallLockMenu(bool state)
     {
         buttonCallLock.GetComponent<Image>().color = state ? buttonCallLockOnColor : buttonCallLockOffColor;
+    }
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+
+    public void _EnableMenuMnbkSkillLevel()
+    {
+        if (!ReferenceEquals(null, menuMnbkSkillLevel)) menuMnbkSkillLevel.SetActive(true);
+    }
+
+    public void _DisableMenuMnbkSkillLevel()
+    {
+        if (!ReferenceEquals(null, menuMnbkSkillLevel)) menuMnbkSkillLevel.SetActive(false);
     }
 #endif
 }

@@ -6,6 +6,8 @@
 #define EIJIS_GUIDELINE2TOGGLE
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
+#define EIJIS_MNBK_AUTOCOUNTER
+// #define EIJIS_MNBK_GUIDELINE2OFF
 
 using System;
 using UdonSharp;
@@ -225,6 +227,9 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                     {
                         table.guideline.SetActive(true);
                         table.devhit.SetActive(true);
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_GUIDELINE2OFF
+                        table.guideline2.SetActive(false);
+#else
 #if EIJIS_GUIDELINE2TOGGLE        
                         if (!table.noGuideline2Local)
 #else
@@ -233,6 +238,7 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                             table.guideline2.SetActive(true);
                         else
                             table.guideline2.SetActive(false);
+#endif
                     }
                     if (table.markerObj.activeSelf) { table.markerObj.SetActive(false); }
                     table.devhit.transform.localPosition = RaySphere_output;

@@ -137,7 +137,7 @@ public class GraphicsManager : UdonSharpBehaviour
 		}
 
 #if EIJIS_WINNER_TEXT_HOTFIX
-		winnerText.text = "Wait for SYNC... (Please RESET Button)";
+		winnerText.text = "";
 #endif
 		winnerText_go = winnerText.gameObject;
 
