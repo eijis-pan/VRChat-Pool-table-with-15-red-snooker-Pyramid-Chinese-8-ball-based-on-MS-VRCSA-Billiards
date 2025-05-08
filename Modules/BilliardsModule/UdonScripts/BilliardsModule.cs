@@ -15,6 +15,7 @@
 #define EIJIS_10BALL
 #define CHEESE_ISSUE_FIX
 #define EIJIS_BANKING
+#define EIJIS_LOG_PREFIX_COLOR_OFF
 
 #define EIJIS_MNBK_AUTOCOUNTER
 #define EIJIS_MNBK_SCORE_ERROR_DETECTION
@@ -70,7 +71,7 @@ public class BilliardsModule : UdonSharpBehaviour
 {
     [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
 #if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_MNBK_AUTOCOUNTER
-    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Banking|mnbk3.0.5)";
+    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Banking|mnbk3.0.6)";
 #else
     [NonSerialized] public readonly string VERSION = "6.0.0";
 #endif
@@ -6829,13 +6830,48 @@ public void _RedrawDebugger() { }
         perfTimings[id] += Time.realtimeSinceStartup - perfStart[id];
         perfCounters[id]++;
     }
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+
+    private string stripTag(string source)
+    {
+        int searchStartPos = 0;
+        string work = source;
+        bool tagFound = false;
+        do
+        {
+            tagFound = false;
+            int braceStartIndex = work.IndexOf('<', searchStartPos);
+            if (0 <= braceStartIndex && braceStartIndex + 1 < work.Length)
+            {
+                int braceEndIndex = work.IndexOf('>', braceStartIndex + 1);
+                if (0 <= braceEndIndex)
+                {
+                    work = work.Substring(0, braceStartIndex) +
+                           work.Substring(braceEndIndex + 1);
+                    searchStartPos = braceStartIndex;
+                    tagFound = true;
+                }
+            }
+        } while (tagFound);
+
+        return work;
+    }
+#endif
 
     private void _log(string ln)
     {
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+#if EIJIS_TABLE_LABEL
+        Debug.Log("[BilliardsModule" + logLabel + "] " + ln);
+#else
+        Debug.Log("[BilliardsModule] " + ln);
+#endif
+#else
 #if EIJIS_TABLE_LABEL
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>" + logLabel + "] " + ln);
 #else
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>] " + ln);
+#endif
 #endif
 
 #if EIJIS_TABLE_LABEL
