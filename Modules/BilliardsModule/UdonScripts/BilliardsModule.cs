@@ -71,7 +71,7 @@ public class BilliardsModule : UdonSharpBehaviour
 {
     [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
 #if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_MNBK_AUTOCOUNTER
-    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Banking|mnbk3.0.6)";
+    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Banking|mnbk3.0.6b)";
 #else
     [NonSerialized] public readonly string VERSION = "6.0.0";
 #endif
