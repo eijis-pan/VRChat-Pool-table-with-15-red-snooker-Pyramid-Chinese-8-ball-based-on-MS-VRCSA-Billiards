@@ -57,6 +57,7 @@ public class NetworkingManager : UdonSharpBehaviour
     
     // bitmask of called balls
     [UdonSynced] [NonSerialized] public uint calledBallsSynced;
+    [UdonSynced] [NonSerialized] public bool safetyCalledSynced;
 #endif
 
     // the current team which is playing
@@ -340,6 +341,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
         pointPocketsSynced = 0;
         callShotLockSynced = false;
+        safetyCalledSynced = false;
 #endif
 
         bufferMessages(false);
@@ -409,6 +411,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
         pointPocketsSynced = 0;
         callShotLockSynced = false;
+        safetyCalledSynced = false;
 #endif
 
         bufferMessages(false);
@@ -427,6 +430,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
         pointPocketsSynced = 0;
         callShotLockSynced = false;
+        safetyCalledSynced = false;
 #endif
 
         bufferMessages(false);
@@ -562,6 +566,7 @@ public class NetworkingManager : UdonSharpBehaviour
             otherPocketedSynced = 0;
             teamColorSynced = (byte)(teamIdSynced ^ 0x1u);
             calledBallsSynced = 0;
+            safetyCalledSynced = false;
         }
         pointPocketsSynced = 0;
 #endif
@@ -634,6 +639,9 @@ public class NetworkingManager : UdonSharpBehaviour
         if (enabled)
         {
             calledBalls = ball_bit;
+#if EIJIS_CALLSHOT
+            safetyCalledSynced = false;
+#endif
         }
         else
         {
@@ -667,6 +675,7 @@ public class NetworkingManager : UdonSharpBehaviour
         if (pocketEnabled)
         {
             pointPockets = pocketBit;
+            safetyCalledSynced = false;
         }
         else
         {
@@ -685,6 +694,17 @@ public class NetworkingManager : UdonSharpBehaviour
         bufferMessages(false);
     }
 
+    public void _OnSafetyCallChanged(bool newState)
+    {
+        safetyCalledSynced = newState;
+        if (safetyCalledSynced)
+        {
+            calledBallsSynced = 0;
+            pointPocketsSynced = 0;
+        }
+
+        bufferMessages(false);
+    }
 #endif
 #if EIJIS_PUSHOUT
     public void _OnPushOutChanged(byte currentPushOutState)

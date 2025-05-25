@@ -83,6 +83,12 @@ public class GraphicsManager : UdonSharpBehaviour
 
 	private Color gripColorActive = new Color(0.0f, 0.5f, 1.1f, 1.0f);
 	private Color gripColorInactive = new Color(0.34f, 0.34f, 0.34f, 1.0f);
+#if EIJIS_CALLSHOT
+	private Color gripColorNoCall = new Color(1.0f, 1.0f, 0.0f, 1.0f);
+	MeshRenderer devhitRenderers;
+	private Color devhitActive = new Color(1.1f, 0.68f, 0.0f, 1.0f);
+	private Color devhitNoCall = new Color(1.0f, 0.0f, 0.0f, 1.0f);
+#endif
 
 	private BilliardsModule table;
 
@@ -115,6 +121,12 @@ public class GraphicsManager : UdonSharpBehaviour
 	private Transform[] ballTransforms;
 	private Vector3[] ballPositions;
 
+#if EIJIS_CALLSHOT
+	private Material callSafetyOn;
+	private Material callSafetyOff;
+	private MeshRenderer callSafetyRenderer;
+
+#endif
 	public void _Init(BilliardsModule table_)
 	{
 		table = table_;
@@ -172,6 +184,26 @@ public class GraphicsManager : UdonSharpBehaviour
 			caromCushionTouchActive[i] = false;
 			caromCushionTouchTime[i] = 0;
 		}
+#endif
+#if EIJIS_CALLSHOT
+		Transform callSafety = table.transform.Find("intl.controls/callSafety");
+		if (ReferenceEquals(null, callSafety))
+		{
+			table._LogInfo("  intl.controls/callsafety object not set.");
+		}
+		else
+		{
+			table.callSafetyOrb = callSafety.gameObject;
+			Transform safetyCalled = callSafety.Find("render");
+			if (!ReferenceEquals(null, safetyCalled))
+			{
+				callSafetyRenderer = safetyCalled.GetComponent<MeshRenderer>();
+			}
+		}
+
+		devhitRenderers = table.transform.Find("intl.balls/dev-hit").GetComponent<MeshRenderer>();
+		callSafetyOn = table.transform.Find("intl.balls/dev-hit").GetComponent<MeshRenderer>().sharedMaterial;
+		callSafetyOff = table.transform.Find("intl.cue-0/body/render").GetComponent<MeshRenderer>().sharedMaterial;
 #endif
 	}
 
@@ -852,6 +884,9 @@ int uniform_cue_colour;
 #endif
 		else if (table.is8Ball) updateEightBallCues(idsrc);
 
+#if EIJIS_CALLSHOT
+		_UpdateCueGrip();
+#else
 		if (table.isPracticeMode)
 		{
 			cuePrimaryGripRenderers[0].material.SetColor(uniform_marker_colour, gripColorActive);
@@ -874,8 +909,43 @@ int uniform_cue_colour;
 				cueSecondaryGripRenderers[1].material.SetColor(uniform_marker_colour, gripColorActive);
 			}
 		}
+#endif
 	}
 
+#if EIJIS_CALLSHOT
+	public void _UpdateCueGrip()
+	{
+		Color activeCueGripColor = table.CanShotCondition() ? gripColorActive : gripColorNoCall;
+
+		if (table.isPracticeMode)
+		{
+			cuePrimaryGripRenderers[0].material.SetColor(uniform_marker_colour, activeCueGripColor);
+			cueSecondaryGripRenderers[0].material.SetColor(uniform_marker_colour, activeCueGripColor);
+		}
+		else
+		{
+			if (table.teamIdLocal == 0)
+			{
+				cuePrimaryGripRenderers[0].material.SetColor(uniform_marker_colour, activeCueGripColor);
+				cueSecondaryGripRenderers[0].material.SetColor(uniform_marker_colour, activeCueGripColor);
+				cuePrimaryGripRenderers[1].material.SetColor(uniform_marker_colour, gripColorInactive);
+				cueSecondaryGripRenderers[1].material.SetColor(uniform_marker_colour, gripColorInactive);
+			}
+			else
+			{
+				cuePrimaryGripRenderers[0].material.SetColor(uniform_marker_colour, gripColorInactive);
+				cueSecondaryGripRenderers[0].material.SetColor(uniform_marker_colour, gripColorInactive);
+				cuePrimaryGripRenderers[1].material.SetColor(uniform_marker_colour, activeCueGripColor);
+				cueSecondaryGripRenderers[1].material.SetColor(uniform_marker_colour, activeCueGripColor);
+			}
+		}
+	}
+
+	public void _UpdateDevhit()
+	{
+		devhitRenderers.material.SetColor(uniform_marker_colour, table.CanShotCondition() ? devhitActive : devhitNoCall);
+	}
+#endif
 	private void updateTable(uint teamId)
 	{
 		if (table.is4Ball)
@@ -1282,6 +1352,9 @@ int uniform_cue_colour;
 		orangeScore.gameObject.SetActive(false);
 		blueScore.gameObject.SetActive(false);
 		snookerInstruction.gameObject.SetActive(false);
+#if EIJIS_CALLSHOT
+		if (!ReferenceEquals(null, table.callSafetyOrb)) table.callSafetyOrb.SetActive(false);
+#endif
 		_HideTimers();
 #if EIJIS_CALLSHOT && EIJIS_CALLSHOT_E
 		_DisablePointPocketMarker();
@@ -1541,27 +1614,28 @@ int uniform_cue_colour;
 #if EIJIS_DEBUG_CALLSHOT_MARKER
 		table._LogInfo($"EIJIS_DEBUG GraphicsManager::_UpdatePointPocketMarker(pointPockets = {pointPockets}, callShotLock = {callShotLock})");
 #endif
+		_ChangePointPocketMarkerMaterial(callShotLock);
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
 			bool enable = (pointPockets & (0x1u << i)) != 0;
 #if EIJIS_CALLSHOT_E
 			table.pointPocketMarkers[i].SetActive(table.requireCallShotLocal);
 #endif
-			if (enable)
-			{
-#if EIJIS_CALLSHOT_E
-				// table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketWhite;
-#else
-				table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material =
-					(callShotLock ? calledPocketGray :
-						(table.isTableOpenLocal ? calledPocketWhite :
-							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
-#endif
-				table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
-					(callShotLock ? calledPocketSphereGray :
-						(table.isTableOpenLocal ? calledPocketSphereWhite :
-							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
-			}
+// 			if (enable)
+// 			{
+// #if EIJIS_CALLSHOT_E
+// 				// table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketWhite;
+// #else
+// 				table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material =
+// 					(callShotLock ? calledPocketGray :
+// 						(table.isTableOpenLocal ? calledPocketWhite :
+// 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
+// #endif
+// 				table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
+// 					(callShotLock ? calledPocketSphereGray :
+// 						(table.isTableOpenLocal ? calledPocketSphereWhite :
+// 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
+// 			}
 #if EIJIS_CALLSHOT_E
 			// else
 			// {
@@ -1586,6 +1660,17 @@ int uniform_cue_colour;
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
 			table.pointPocketMarkers[i].SetActive(false);
+		}
+	}
+
+	public void _ChangePointPocketMarkerMaterial(bool isLocking)
+	{
+		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
+		{
+			table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
+				(isLocking ? calledPocketSphereGray :
+					(table.isTableOpenLocal ? calledPocketSphereWhite :
+						(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
 		}
 	}
 
@@ -1683,4 +1768,18 @@ int uniform_cue_colour;
 		renderingProbe = false;
 		table.reflection_main.RenderProbe();
 	}
+#if EIJIS_CALLSHOT
+
+	public void _UpdateCallSafety(bool safetyCalled)
+	{
+		if (ReferenceEquals(null, callSafetyRenderer))
+		{
+			table._LogInfo("  CallSafety object not set.");
+			return;
+		}
+
+		table.menuManager._StateChangeCallSafetyMenu(safetyCalled);
+		callSafetyRenderer.material = safetyCalled ? callSafetyOn : callSafetyOff;
+	}
+#endif
 }
