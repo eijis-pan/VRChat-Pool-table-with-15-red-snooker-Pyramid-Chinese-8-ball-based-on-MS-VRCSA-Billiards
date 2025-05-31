@@ -15,6 +15,7 @@
 #define EIJIS_10BALL
 #define CHEESE_ISSUE_FIX
 #define EIJIS_BANKING
+#define EIJIS_LOG_PREFIX_COLOR_OFF
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -6061,11 +6062,43 @@ public void _RedrawDebugger() { }
         perfTimings[id] += Time.realtimeSinceStartup - perfStart[id];
         perfCounters[id]++;
     }
+#if EIJIS_LOG_PREFIX_COLOR_OFF
 
+    private string stripTag(string source)
+    {
+        int searchStartPos = 0;
+        string work = source;
+        bool tagFound = false;
+        do
+        {
+            tagFound = false;
+            int braceStartIndex = work.IndexOf('<', searchStartPos);
+            if (0 <= braceStartIndex && braceStartIndex + 1 < work.Length)
+            {
+                int braceEndIndex = work.IndexOf('>', braceStartIndex + 1);
+                if (0 <= braceEndIndex)
+                {
+                    work = work.Substring(0, braceStartIndex) +
+                           work.Substring(braceEndIndex + 1);
+                    searchStartPos = braceStartIndex;
+                    tagFound = true;
+                }
+            }
+        } while (tagFound);
+
+        return work;
+    }
+#endif
+
+    
     private void _log(string ln)
     {
 #if EIJIS_TABLE_LABEL
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+        Debug.Log("[BilliardsModule" + logLabel + "] " + stripTag(ln));
+#else
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>" + logLabel + "] " + ln);
+#endif
 #else
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>] " + ln);
 #endif
