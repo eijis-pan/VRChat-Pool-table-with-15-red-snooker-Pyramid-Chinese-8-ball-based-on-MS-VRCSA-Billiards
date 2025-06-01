@@ -177,7 +177,11 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
             Vector3 cueball_pos = balls_P[0];
 
+#if EIJIS_CALLSHOT
+            if (table.canHitCueBall && !isContact && table.CanShotCondition())
+#else
             if (table.canHitCueBall && !isContact)
+#endif
             {
                 float sweep_time_ball = Vector3.Dot(cueball_pos - cue_llpos, cue_vdir);
 
@@ -201,7 +205,7 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             else
             {
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
-                if (!ReferenceEquals(null, Networking.LocalPlayer) && Networking.LocalPlayer.IsUserInVR())
+                if (!table.canHitCueBall && !ReferenceEquals(null, Networking.LocalPlayer) && Networking.LocalPlayer.IsUserInVR())
                 {
 #if EIJIS_CALLSHOT
 #if EIJIS_10BALL
@@ -263,10 +267,22 @@ public class StandardPhysicsManager : UdonSharpBehaviour
                 // Get where the cue will strike the ball
                 if (_phy_ray_sphere(lpos2, cue_vdir, cueball_pos))
                 {
+#if EIJIS_CALLSHOT
                     if (!table.noGuidelineLocal)
                     {
-                        table.guideline.SetActive(true);
                         table.devhit.SetActive(true);
+                    }
+#endif
+#if EIJIS_CALLSHOT
+                    if (!table.noGuidelineLocal && table.CanShotCondition())
+#else
+                    if (!table.noGuidelineLocal)
+#endif
+                    {
+                        table.guideline.SetActive(true);
+#if !EIJIS_CALLSHOT
+                        table.devhit.SetActive(true);
+#endif
 #if EIJIS_GUIDELINE2TOGGLE        
                         if (!table.noGuideline2Local)
 #else

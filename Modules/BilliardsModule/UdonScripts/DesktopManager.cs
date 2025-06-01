@@ -5,6 +5,8 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
 
+// #define EIJIS_CALLSHOT_ALLOW_UNSELECT
+
 // #define EIJIS_DEBUG_BALLORDER
 
 #if EIJIS_CUEBALLSWAP
@@ -36,6 +38,8 @@ public class DesktopManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
     [SerializeField] private GameObject callShot;
+    [SerializeField] private GameObject safety;
+    [SerializeField] private GameObject safetyCalled;
 #endif
 #if EIJIS_PUSHOUT
     [SerializeField] private GameObject pushOut;
@@ -222,7 +226,11 @@ public class DesktopManager : UdonSharpBehaviour
             }
             else
             {
+#if EIJIS_CALLSHOT
+                if (Input.GetKey(KeyCode.Mouse0) && table.CanShotCondition())
+#else
                 if (Input.GetKey(KeyCode.Mouse0))
+#endif
                 {
                     if (!isShooting)
                     {
@@ -285,16 +293,14 @@ public class DesktopManager : UdonSharpBehaviour
                 renderCuePosition(shotDirection);
                 updateSpinIndicator();
                 updateJumpIndicator();
-#if EIJIS_PUSHOUT
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
                 updateCallShotIndicator();
 #endif
-                updatePushOutIndicator();
-#else
-#if EIJIS_CUEBALLSWAP
-                if(gameModeLocal==BilliardsModule.GAMEMODE_PYRAMID)     //cheese add
-                     updateCallShotIndicator();
+#if EIJIS_CALLSHOT
+                updateCallSafetyIndicator();
 #endif
+#if EIJIS_PUSHOUT
+                updatePushOutIndicator();
 #endif
             }
         }
@@ -304,6 +310,9 @@ public class DesktopManager : UdonSharpBehaviour
 #if EIJIS_PUSHOUT
         
         pushOutDoing.SetActive(table.pushOutStateLocal == table.PUSHOUT_DOING);
+#endif
+#if EIJIS_CALLSHOT
+        safetyCalled.SetActive(table.safetyCalledLocal);
 #endif
 
         bool hitCtrlNow = Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl);
@@ -383,6 +392,11 @@ public class DesktopManager : UdonSharpBehaviour
 #if EIJIS_DEBUG_BALLORDER
         table._LogInfo($"  before called ball id = {id}");
 #endif
+        if (id < 0)
+        {
+            return table.findLowestUnpocketedBall(table.ballsPocketedLocal);
+        }
+        int orig = id;
 
         uint ballsPocketed = table.ballsPocketedLocal;
         int beforeId = id;
@@ -500,7 +514,11 @@ public class DesktopManager : UdonSharpBehaviour
 #endif
         if (nearest_x == float.MaxValue || nearest_x == float.MinValue)
         {
+#if EIJIS_CALLSHOT_ALLOW_UNSELECT
+            id = orig;
+#else
             id = farestId;
+#endif
         }
 
         return id;
@@ -523,7 +541,11 @@ public class DesktopManager : UdonSharpBehaviour
                 int next = current + (asc ? 1 : -1);
                 if (next < 0 || pocketCount <= next)
                 {
+#if EIJIS_CALLSHOT_ALLOW_UNSELECT
                     id = i;
+#else
+                    id = pocketOrder[(asc ? 0 : pocketOrder.Length - 1)];
+#endif
                     break;
                 }
 
@@ -571,14 +593,22 @@ public class DesktopManager : UdonSharpBehaviour
     }
 
 #endif
+#if EIJIS_CALLSHOT
+    private void updateCallSafetyIndicator()
+    {
+        if (!safety.activeSelf) return;
+        
+        if (Input.GetKeyDown(KeyCode.T))
+        { 
+            table._CallSafety();
+        }
+    }
+
+#endif
 #if EIJIS_PUSHOUT
     private void updatePushOutIndicator()
     {
-#if EIJIS_10BALL
-        if ((!table.is8Ball && !table.is9Ball && !table.is10Ball) || !pushOut.activeSelf) return;
-#else
-        if ((!table.is8Ball && !table.is9Ball) || !pushOut.activeSelf) return;
-#endif
+        if (!pushOut.activeSelf) return;
         
         if (Input.GetKeyDown(KeyCode.O))
         { 
@@ -714,6 +744,11 @@ public class DesktopManager : UdonSharpBehaviour
     public void _CallShotSetActive(bool show)
     {
         callShot.SetActive(show);
+    }
+    
+    public void _CallSafetySetActive(bool show)
+    {
+        safety.SetActive(show);
     }
 #endif
 }

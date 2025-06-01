@@ -37,6 +37,9 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private GameObject buttonCallLock;
     [SerializeField] private Color buttonCallLockOnColor;
     private Color buttonCallLockOffColor;
+    [SerializeField] private GameObject buttonCallSafety;
+    [SerializeField] private Color buttonCallSafetyOnColor;
+    private Color buttonCallSafetyOffColor;
 #endif
     [SerializeField] private TextMeshProUGUI[] lobbyNames;
 
@@ -78,6 +81,7 @@ public class MenuManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
             buttonCallLockOffColor = buttonCallLock.GetComponent<Image>().color;
+            buttonCallSafetyOffColor = buttonCallSafety.GetComponent<Image>().color;
 #endif
         }
 
@@ -873,6 +877,21 @@ public class MenuManager : UdonSharpBehaviour
     public void _StateChangeCallLockMenu(bool state)
     {
         buttonCallLock.GetComponent<Image>().color = state ? buttonCallLockOnColor : buttonCallLockOffColor;
+    }
+    
+    public void _EnableCallSafetyMenu()
+    {
+        buttonCallSafety.SetActive(true);
+    }
+
+    public void _DisableCallSafetyMenu()
+    {
+        buttonCallSafety.SetActive(false);
+    }
+
+    public void _StateChangeCallSafetyMenu(bool state)
+    {
+        buttonCallSafety.GetComponent<Image>().color = state ? buttonCallSafetyOnColor : buttonCallSafetyOffColor;
     }
 #endif
 }

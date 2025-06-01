@@ -31,6 +31,7 @@
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_FINDLOGIC
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION
 // #define EIJIS_DEBUG_BANKING
+// #define EIJIS_CALLSHOT_ALLOW_UNSELECT
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -382,6 +383,8 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public uint targetPocketedLocal;
     [NonSerialized] public uint otherPocketedLocal;
     [NonSerialized] public uint pointPocketsLocal;
+    [NonSerialized] public bool safetyCalledLocal;
+    [NonSerialized] public GameObject callSafetyOrb;
 #endif
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
     [NonSerialized] public uint calledBallsLocal;
@@ -951,7 +954,11 @@ public class BilliardsModule : UdonSharpBehaviour
         calledBalls |= 0x1u << id;
         if (calledBalls == calledBallsLocal)
         {
+#if EIJIS_CALLSHOT_ALLOW_UNSELECT
             calledBalls ^= 0x1u << id;
+#else
+            return;
+#endif
         }
         
 #if EIJIS_CALLSHOT
@@ -1041,7 +1048,11 @@ public class BilliardsModule : UdonSharpBehaviour
         pointPockets |= 0x1u << id;
         if (pointPockets == pointPocketsLocal)
         {
+#if EIJIS_CALLSHOT_ALLOW_UNSELECT
             pointPockets ^= 0x1u << id;
+#else
+            return;
+#endif
         }
 
 #if false // callShotOprationOverwriteMode
@@ -1086,6 +1097,12 @@ public class BilliardsModule : UdonSharpBehaviour
 #if !HT_QUEST
         this.transform.Find("intl.balls/guide/guide_display").GetComponent<MeshRenderer>().material.SetColor("_Colour", k_aimColour_locked);
 #endif
+#if EIJIS_CALLSHOT
+        if (!isLocalSimulationRunning)
+        {
+            graphicsManager._ChangePointPocketMarkerMaterial(true);
+        }
+#endif
     }
 
     public void _TriggerCueDeactivate()
@@ -1094,6 +1111,9 @@ public class BilliardsModule : UdonSharpBehaviour
 
 #if !HT_QUEST
         guideline.gameObject.transform.Find("guide_display").GetComponent<MeshRenderer>().material.SetColor("_Colour", k_aimColour_aim);
+#endif
+#if EIJIS_CALLSHOT
+        graphicsManager._ChangePointPocketMarkerMaterial(false);
 #endif
     }
 
@@ -1448,11 +1468,12 @@ public class BilliardsModule : UdonSharpBehaviour
 #else
         onRemoteTurnStateChanged(networkingManager.turnStateSynced);
 #endif
-#if EIJIS_CALLSHOT
-        onRemotePointPocketsChanged(networkingManager.pointPocketsSynced, networkingManager.callShotLockSynced, stateIdChanged);
-#endif
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
-        onRemoteCalledBallsChanged(networkingManager.calledBallsSynced, stateIdChanged);
+        onRemoteCallStateChanged(networkingManager.calledBallsSynced, networkingManager.pointPocketsSynced, networkingManager.callShotLockSynced, networkingManager.safetyCalledSynced, stateIdChanged);
+#endif
+#if EIJIS_CALLSHOT
+        graphicsManager._UpdateCueGrip();
+        graphicsManager._UpdateDevhit();
 #endif
 
         // finally, take a snapshot
@@ -1947,6 +1968,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 
         disablePlayComponents();
+#if EIJIS_CALLSHOT
+        if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
+        safetyCalledLocal = false;
+#endif
 
         localPlayerId = -1;
         localTeamId = uint.MaxValue;
@@ -2294,47 +2319,21 @@ public class BilliardsModule : UdonSharpBehaviour
             disablePlayComponents();
         }
     }
-#if EIJIS_CALLSHOT
-    
-    private void onRemotePointPocketsChanged(uint pointPocketsSynced, bool callShotLockSynced, bool stateIdChanged)
-    {
-        if (!gameLive) return;
-
-        if (pointPocketsLocal == pointPocketsSynced && callShotLockLocal == callShotLockSynced && 0 < stateIdLocal ) return;
-
-        _LogInfo($"onRemotePointPocketsChanged pointPockets={pointPocketsSynced:X2}, callShotLock={callShotLockSynced}");
-        pointPocketsLocal = pointPocketsSynced;
-        callShotLockLocal = callShotLockSynced;
-#if EIJIS_CUEBALLSWAP
-        if (isPyramid)
-        {
-            marker9ball.GetComponent<MeshRenderer>().material =
-                callShotLockLocal ? calledBallMarkerGray : calledBallMarkerWhite;
-        }
-#endif
-#if EIJIS_CALLSHOT_E
-        if ((is8Ball || is9Ball || is10Ball) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
-        {
-            graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
-        }
-#else
-        graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
-#endif
-        if (!stateIdChanged)
-        {
-            aud_main.PlayOneShot(snd_btn);
-        }
-    }
-#endif
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
 
-    private void onRemoteCalledBallsChanged(uint calledBallsSynced, bool stateIdChanged)
+    private void onRemoteCallStateChanged(uint calledBallsSynced, uint pointPocketsSynced, bool callShotLockSynced, bool safetyCalledSynced, bool stateIdChanged)
     {
         if (!gameLive) return;
 
-        if (calledBallsLocal == calledBallsSynced && 0 < stateIdLocal) return;
+        if (calledBallsLocal == calledBallsSynced && pointPocketsLocal == pointPocketsSynced && callShotLockLocal == callShotLockSynced && safetyCalledLocal == safetyCalledSynced && 0 < stateIdLocal ) return;
 
-        _LogInfo($"onRemoteCalledBallsChanged calledBalls={calledBallsSynced:X4}");
+        _LogInfo($"onRemoteCallStateChanged calledBalls={calledBallsSynced:X4}, pointPockets={pointPocketsSynced:X2}, callShotLock={callShotLockSynced}, safetyCalled={safetyCalledSynced}");
+
+        if (calledBallsLocal != calledBallsSynced)
+        {
+            semiAutoCallDelayBase = Networking.GetServerTimeInMilliseconds();
+        }
+        
 #if EIJIS_CALLSHOT
         if (isPyramid)
         {
@@ -2349,14 +2348,43 @@ public class BilliardsModule : UdonSharpBehaviour
         calledBallsLocal = 0; //calledBallsSynced;
         calledBallId = -2;
 #endif
+        pointPocketsLocal = pointPocketsSynced;
+        callShotLockLocal = callShotLockSynced;
+        safetyCalledLocal = safetyCalledSynced;
+
+#if EIJIS_CUEBALLSWAP
+        if (isPyramid)
+        {
+            marker9ball.GetComponent<MeshRenderer>().material =
+                callShotLockLocal ? calledBallMarkerGray : calledBallMarkerWhite;
+        }
+
+#endif
+        if ((is8Ball || is9Ball || is10Ball) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
+        {
+            if (safetyCalledLocal || calledBallsLocal != 0 || pointPocketsLocal != 0)
+            {
+                graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
+            }
+            else
+            {
+                graphicsManager._DisablePointPocketMarker();
+            }
+            if (!safetyCalledLocal && (calledBallsLocal == 0 || pointPocketsLocal == 0))
+            {
+                guideline.SetActive(false);
+            }
+            graphicsManager._UpdateCallSafety(safetyCalledLocal);
+        }
+
         if (!stateIdChanged)
         {
-#if EIJIS_DEBUG_PUSHOUT
-            _LogInfo("  onRemoteCalledBallsChanged() !stateIdChanged PlayOneShot");
-#endif
             aud_main.PlayOneShot(snd_btn);
         }
+        
+        // _UpdateNextBallRepositionSpotMarker();
     }
+
 #endif
 #if EIJIS_PUSHOUT
 
@@ -4380,23 +4408,51 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             if (requireCallShotLocal)
             {
-                if (Networking.LocalPlayer.IsUserInVR()) menuManager._EnableCallLockMenu();
+                if (Networking.LocalPlayer.IsUserInVR())
+                {
+                    menuManager._EnableCallLockMenu();
+                    menuManager._EnableCallSafetyMenu();
+                }
+                else
+                {
+                    menuManager._DisableCallLockMenu();
+                    menuManager._DisableCallSafetyMenu();
+                }
                 desktopManager._CallShotSetActive(true);
+                desktopManager._CallSafetySetActive(true);
             }
             else
             {
                 menuManager._DisableCallLockMenu();
+                menuManager._DisableCallSafetyMenu();
                 desktopManager._CallShotSetActive(false);
+                desktopManager._CallSafetySetActive(false);
             }
+
+            // this.transform.Find("intl.controls/callShotLock").gameObject.SetActive(true);
+            this.transform.Find("intl.controls/callSafety").gameObject.SetActive(true);
+            // this.transform.Find("intl.controls/pushOut").gameObject.SetActive(enablePushOutLocal && (pushOutStateLocal == PUSHOUT_DONT || pushOutStateLocal == PUSHOUT_DOING));
+            // this.transform.Find("intl.controls/skipturn").gameObject.SetActive(practiceEnable || (enablePushOutLocal && (pushOutStateLocal == PUSHOUT_REACTIONING)) || (pushOutStateLocal == PUSHOUT_ILLEGAL_REACTIONING));
+            
+            if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(true);
         }
         else
         {
             desktopManager._CallShotSetActive(false);
+            desktopManager._CallSafetySetActive(false);
+            
+            // this.transform.Find("intl.controls/callShotLock").gameObject.SetActive(false);
+            this.transform.Find("intl.controls/callSafety").gameObject.SetActive(false);
+            // this.transform.Find("intl.controls/pushOut").gameObject.SetActive(false);
+            // this.transform.Find("intl.controls/skipturn").gameObject.SetActive(practiceEnable);
+            
+            if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
         }
 
         if (!isOurTurnVar)
         {
             menuManager._DisableCallLockMenu();
+            menuManager._DisableCallSafetyMenu();
         }
 #endif
         
@@ -4451,12 +4507,19 @@ public class BilliardsModule : UdonSharpBehaviour
         _TriggerSimulationEnded(false, true);
     }
 
-#if EIJIS_PUSHOUT || EIJIS_CUEBALLSWAP
+#if EIJIS_CALLSHOT || EIJIS_CUEBALLSWAP
     public void _CallShotLock()
     {
         networkingManager._OnCallShotLockChanged(!callShotLockLocal);
     }
 
+#endif
+#if EIJIS_CALLSHOT
+    public void _CallSafety()
+    {
+        networkingManager._OnSafetyCallChanged(!safetyCalledLocal);
+    }
+    
 #endif
 #if EIJIS_PUSHOUT
     public void _PushOut()
@@ -4533,7 +4596,7 @@ public class BilliardsModule : UdonSharpBehaviour
         if (0 < target && 0 == (ballsPocketedLocal & (0x1 << target)))
         {
             bool callShotLock = callShotLockLocal && turnStateLocal != 1;
-            markerCalledBall.GetComponent<MeshRenderer>().material = callShotLock ? calledBallMarkerGray :
+            markerCalledBall.GetComponent<MeshRenderer>().material = ((callShotLock || canHitCueBall) && !isLocalSimulationRunning) ? calledBallMarkerGray :
                 (isTableOpenLocal ? calledBallMarkerWhite :
                     ((teamIdLocal ^ teamColorLocal) == 0 ? calledBallMarkerBlue : calledBallMarkerOrange));
             markerCalledBall.transform.localPosition = ballsP[target];
@@ -4568,7 +4631,9 @@ public class BilliardsModule : UdonSharpBehaviour
         auto_colliderBaseVFX.SetActive(false);
 
 #if EIJIS_CALLSHOT
+        if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
         menuManager._DisableCallLockMenu();
+        menuManager._DisableCallSafetyMenu();
 #endif
 #if EIJIS_PUSHOUT
         menuManager._DisablePushOutMenu();
@@ -5896,6 +5961,20 @@ public class BilliardsModule : UdonSharpBehaviour
         value = (((value + (value >> 4)) & c3) * c4) >> 24;
 
         return value;
+    }
+#endif
+#if EIJIS_CALLSHOT
+    
+    public bool CanShotCondition()
+    {
+        if (!requireCallShotLocal) return true;
+        if (!is8Ball && !is9Ball && !is10Ball /* !isRotation */) return true;
+        if (colorTurnLocal) return true; // if (!afterBreak) return true;
+        if (safetyCalledLocal) return true;
+        if (pushOutStateLocal == PUSHOUT_DOING) return true;
+        if (calledBallsLocal != 0 && pointPocketsLocal != 0) return true;
+        
+        return false;
     }
 #endif
 #endregion
