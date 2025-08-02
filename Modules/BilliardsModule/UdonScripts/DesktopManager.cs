@@ -4,6 +4,7 @@
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
+#define EIJIS_ROTATION
 
 // #define EIJIS_CALLSHOT_ALLOW_UNSELECT
 
@@ -379,7 +380,7 @@ public class DesktopManager : UdonSharpBehaviour
 #if EIJIS_DEBUG_BALLORDER
         table._LogInfo($"DesktopManager::nextBallOrder(asc = {asc})");
 #endif
-        int id = 0;
+        int id = -1;
         uint calledBalls = table.calledBallsLocal;
         for (int i = 1; i < table.ballsP.Length; i++)
         {
@@ -394,7 +395,14 @@ public class DesktopManager : UdonSharpBehaviour
 #endif
         if (id < 0)
         {
-            return table.findLowestUnpocketedBall(table.ballsPocketedLocal);
+            if (table.is10Ball || table.isRotation)
+            {
+                return table.findLowestUnpocketedBall(table.ballsPocketedLocal);
+            }
+            else
+            {
+                id = 0;
+            }
         }
         int orig = id;
 
@@ -408,7 +416,11 @@ public class DesktopManager : UdonSharpBehaviour
         float farest_x = asc ? float.MaxValue : float.MinValue;
         float farest_z = asc ? float.MaxValue : float.MinValue;
 #if EIJIS_CALLSHOT
+#if EIJIS_ROTATION
+        for (int i = (table.isPyramid ? 0 : 1); i <= table.ballsLengthByPocketGame + (table.isRotation6Balls ? 1 : 0); i++)
+#else
         for (int i = (table.isPyramid ? 0 : 1); i <= table.ballsLengthByPocketGame; i++)
+#endif
 #else
         for (int i = 0; i < BilliardsModule.MAX_BALLS; i++)
 #endif
@@ -562,10 +574,10 @@ public class DesktopManager : UdonSharpBehaviour
     private void updateCallShotIndicator()
     {
 #if EIJIS_CALLSHOT
-#if EIJIS_10BALL
-        if ((!table.isPyramid && (!table.requireCallShotLocal || (!table.is8Ball && !table.is9Ball && !table.is10Ball))) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
+#if EIJIS_10BALL && EIJIS_ROTATION
+        if ((!table.isPyramid && (!table.requireCallShotLocal || (!table.is8Ball && !table.is10Ball && !table.isRotation))) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
 #else
-        if ((!table.isPyramid && (!table.requireCallShotLocal || (!table.is8Ball && !table.is9Ball))) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
+        if ((!table.isPyramid && (!table.requireCallShotLocal || !table.is8Ball)) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
 #endif
 #else
 #if EIJIS_PUSHOUT

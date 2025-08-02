@@ -8259,24 +8259,44 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
         type: 3}
+      propertyPath: callLockOn
+      value: 
+      objectReference: {fileID: 2100000, guid: f55c775d8864f7646a3f24a604fef961, type: 2}
+    - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
+        type: 3}
+      propertyPath: callLockOffBlue
+      value: 
+      objectReference: {fileID: 2100000, guid: f3621ae0ba3df0b4fb9d9ced8c14189d, type: 2}
+    - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
+        type: 3}
+      propertyPath: callLockOffWhite
+      value: 
+      objectReference: {fileID: 2100000, guid: 71d9820b1c7432b48937d61a9725fa6a, type: 2}
+    - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
+        type: 3}
       propertyPath: calledPocketBlue
       value: 
-      objectReference: {fileID: 2100000, guid: 80f7c2a258a7d69429ebdf6338532b04, type: 2}
+      objectReference: {fileID: 2100000, guid: 83eb274280b1c734d91cdac942c7ea56, type: 2}
     - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
         type: 3}
       propertyPath: calledPocketGray
       value: 
-      objectReference: {fileID: 2100000, guid: 16ffce54ece26fe41b6f2c6cee3cdb12, type: 2}
+      objectReference: {fileID: 2100000, guid: b6a8632124e56e64bb0e74ed86e92c88, type: 2}
+    - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
+        type: 3}
+      propertyPath: callLockOffOrange
+      value: 
+      objectReference: {fileID: 2100000, guid: 97020d03d4576634db86ec8590c89a3d, type: 2}
     - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
         type: 3}
       propertyPath: calledPocketWhite
       value: 
-      objectReference: {fileID: 2100000, guid: 4fa804622995b40408aff4da47193ffb, type: 2}
+      objectReference: {fileID: 2100000, guid: 457a973a35b1954499b109ab55335d46, type: 2}
     - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
         type: 3}
       propertyPath: calledPocketOrange
       value: 
-      objectReference: {fileID: 2100000, guid: 365a58db1c3ef6d4abc89ecb3be0533e, type: 2}
+      objectReference: {fileID: 2100000, guid: 94fbbeefaf88551488ba2e5efcd7f5db, type: 2}
     - target: {fileID: 4263188257100169879, guid: 33b9a5bf9f9ccf64789dc9dad186569e,
         type: 3}
       propertyPath: calledPocketSphereBlue

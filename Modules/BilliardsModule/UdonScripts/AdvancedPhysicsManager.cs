@@ -9,6 +9,7 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_ROTATION
 
 // #define HT8B_DRAW_REGIONS
 using System;
@@ -239,19 +240,23 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
                 if (!table.canHitCueBall && !ReferenceEquals(null, Networking.LocalPlayer) && Networking.LocalPlayer.IsUserInVR())
                 {
 #if EIJIS_CALLSHOT
-#if EIJIS_10BALL
+#if EIJIS_10BALL && EIJIS_ROTATION
                     if (table.isPyramid ||
-                        (table.requireCallShotLocal && (table.is8Ball || table.is9Ball || table.is10Ball)))
+                        (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation)))
 #else
                     if (table.isPyramid ||
-                            (table.requireCallShotLocal && (table.is8Ball || table.is9Ball /* || table.is10Ball */ )))
+                            (table.requireCallShotLocal && table.is8Ball))
 #endif
 #else
                     if (table.isPyramid)
 #endif
                     {
                         bool hit = false;
+#if EIJIS_ROTATION
+                        for (int i = (table.isRotation6Balls ? 2 : 1); i < balls_P.Length; i++)
+#else
                         for (int i = 1; i < balls_P.Length; i++)
+#endif
                         {
                             if ((lpos2 - balls_P[i]).sqrMagnitude < k_BALL_RSQR)
                             {
@@ -267,10 +272,10 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
                     }
 #if EIJIS_CALLSHOT
 
-#if EIJIS_10BALL
-                    if (table.requireCallShotLocal &&(table.is8Ball || table.is9Ball || table.is10Ball))
+#if EIJIS_10BALL && EIJIS_ROTATION
+                    if (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation))
 #else
-                    if (table.requireCallShotLocal &&(table.is8Ball || table.is9Ball /* || table.is10Ball */ ))
+                    if (table.requireCallShotLocal && table.is8Ball)
 #endif
                     {
                         bool hit = false;
@@ -1884,8 +1889,8 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
 
     private bool isCueBallTouching()
     {
-#if EIJIS_SNOOKER15REDS
-        if (table.is8Ball)
+#if EIJIS_SNOOKER15REDS && EIJIS_ROTATION
+        if (table.is8Ball || table.isRotation15Balls)
 #else
         if (table.is8Ball || table.isSnooker6Red)
 #endif
@@ -1899,7 +1904,11 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
                 }
             }
         }
+#if EIJIS_ROTATION
+        else if (table.is9Ball || table.isRotation9Balls) // 9
+#else
         else if (table.is9Ball) // 9
+#endif
         {
             // Only check to 9 ball
             for (int i = 1; i <= 9; i++)
@@ -1910,8 +1919,8 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
                 }
             }
         }
-#if EIJIS_10BALL
-        else if (table.is10Ball) // 10
+#if EIJIS_10BALL && EIJIS_ROTATION
+        else if (table.is10Ball || table.isRotation10Balls) // 10
         {
             // Only check to 10 ball
             for (int i = 1; i <= 10; i++)
@@ -1934,6 +1943,19 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
                 }
             }
             for (int i = 25; i < 31; i++)
+            {
+                if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
+                {
+                    return true;
+                }
+            }
+        }
+#endif
+#if EIJIS_ROTATION
+        else if (table.isRotation6Balls) // 6
+        {
+            // Only check to 6 ball
+            for (int i = 2; i <= 7; i++)
             {
                 if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
                 {

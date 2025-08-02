@@ -7,6 +7,12 @@
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_EXTERNAL_SCORE_SCREEN
+#define EIJIS_EXTRA_GAMES
+#define EIJIS_ROTATION
+#define EIJIS_CUSTOM_GOAL_POINT
+
+// #define EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
 
 using System;
 using UdonSharp;
@@ -23,6 +29,9 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private GameObject menuStart;
     [SerializeField] private GameObject menuJoinLeave;
     [SerializeField] private GameObject menuLobby;
+#if EIJIS_CUSTOM_GOAL_POINT
+    [SerializeField] private GameObject menuGoalPoint;
+#endif
     [SerializeField] private GameObject menuLoad;
     [SerializeField] private GameObject menuOther;
     [SerializeField] private GameObject menuUndo;
@@ -47,12 +56,28 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private TextMeshProUGUI timelimitDisplay;
     [SerializeField] private TextMeshProUGUI tableDisplay;
     [SerializeField] private TextMeshProUGUI physicsDisplay;
+#if EIJIS_CUSTOM_GOAL_POINT
+    [SerializeField] private TextMeshProUGUI goalPointOrangeDisplay;
+    [SerializeField] private TextMeshProUGUI goalPointBlueDisplay;
+#endif
+#if EIJIS_EXTRA_GAMES
+    private Image gameModePanel;
+    private Sprite basicGamesImage;
+    private Sprite extraGamesImage;
+    private GameObject basicGamesButton;
+    private GameObject extraGamesButton;
+    private GameObject gameModeExtraBg;
+    private GameObject gameModeTitleExtra;
+#endif
 
     private BilliardsModule table;
 
     private uint selectedTimer;
     private uint selectedTable;
     private uint selectedPhysics;
+#if EIJIS_CUSTOM_GOAL_POINT
+    private uint[] selectedGoalPointIndex = new uint[2];
+#endif
 
     private Vector3 joinMenuPosition;
     private Quaternion joinMenuRotation;
@@ -83,6 +108,24 @@ public class MenuManager : UdonSharpBehaviour
             buttonCallLockOffColor = buttonCallLock.GetComponent<Image>().color;
             buttonCallSafetyOffColor = buttonCallSafety.GetComponent<Image>().color;
 #endif
+#if EIJIS_EXTRA_GAMES
+            gameModePanel = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode").gameObject.GetComponent<Image>();
+            basicGamesImage = gameModePanel.sprite;
+            Transform gameModeExtra = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameModeExtra");
+            if (!ReferenceEquals(null, gameModeExtra))
+            {
+                extraGamesImage = gameModeExtra.gameObject.GetComponent<Image>().sprite;
+                gameModePanel.sprite = extraGamesImage;
+            }
+            Transform buttons = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/Buttons");
+            if (!ReferenceEquals(null, buttons)) basicGamesButton = buttons.gameObject;
+            Transform buttonsExtra = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsExtra");
+            if (!ReferenceEquals(null, buttonsExtra)) extraGamesButton = buttonsExtra.gameObject;
+            Transform bg_brown = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/BG_Brown");
+            if (!ReferenceEquals(null, bg_brown)) gameModeExtraBg = bg_brown.gameObject;
+            Transform gameModeTitleExtraTr = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/GameModeTitleExtra");
+            if (!ReferenceEquals(null, gameModeTitleExtraTr)) gameModeTitleExtra = gameModeTitleExtraTr.gameObject;
+#endif
         }
 
         _RefreshTimer();
@@ -91,6 +134,9 @@ public class MenuManager : UdonSharpBehaviour
         _RefreshToggleSettings();
         _RefreshLobby();
         _RefreshPlayerList();
+#if EIJIS_CUSTOM_GOAL_POINT
+        _RefreshGoalPoint();
+#endif
 
         _DisableMenuJoinLeave();
         _DisableLobbyMenu();
@@ -104,6 +150,9 @@ public class MenuManager : UdonSharpBehaviour
         _DisableCallLockMenu();
 #endif
         _EnableStartMenu();
+#if EIJIS_CUSTOM_GOAL_POINT
+        _DisableMenuGoalPoint();
+#endif
 
         cueSizeText.text = (cueSizeSlider.value / 10f).ToString("F1");
     }
@@ -118,8 +167,14 @@ public class MenuManager : UdonSharpBehaviour
         int numPlayers = 0;
         int numPlayersOrange = 0;
         int numPlayersBlue = 0;
+#if EIJIS_EXTERNAL_SCORE_SCREEN
+        string[] playerNames = new string[lobbyNames.Length];
+#endif
         for (int i = 0; i < 4; i++)
         {
+#if EIJIS_EXTERNAL_SCORE_SCREEN
+            playerNames[i] = string.Empty;
+#endif
             if (!table.teamsLocal && i > 1)
             {
                 lobbyNames[i].text = string.Empty;
@@ -133,6 +188,9 @@ public class MenuManager : UdonSharpBehaviour
             }
             else
             {
+#if EIJIS_EXTERNAL_SCORE_SCREEN
+                playerNames[i] = player.displayName;
+#endif
                 lobbyNames[i].text = table.graphicsManager._FormatName(player);
                 numPlayers++;
                 if (i % 2 == 0)
@@ -141,6 +199,26 @@ public class MenuManager : UdonSharpBehaviour
                     numPlayersBlue++;
             }
         }
+#if EIJIS_EXTERNAL_SCORE_SCREEN
+        for (int i = 0; i < 2; i++)
+        {
+            string teamName = i == 0 ? "[Orange]" : "[Blue]";
+            string name = playerNames[i];
+            if (name != string.Empty)
+            {
+                teamName = name;
+            }
+            if (table.teamsLocal)
+            {
+                name = playerNames[i + 2];
+                if (name != string.Empty)
+                {
+                    teamName += "\n" + name;
+                }
+            }
+            if (!ReferenceEquals(null, table.scoreScreen)) table.scoreScreen.UpdateTeamName(i, teamName);
+        }
+#endif
         table.numPlayersCurrentOrange = numPlayersOrange;
         table.numPlayersCurrentBlue = numPlayersBlue;
         table.numPlayersCurrent = numPlayers;
@@ -168,6 +246,13 @@ public class MenuManager : UdonSharpBehaviour
     {
         string modeName = "";
         uint mode = (uint)table.GetProgramVariable("gameModeLocal");
+#if EIJIS_EXTRA_GAMES
+        if (!ReferenceEquals(null, extraGamesImage)) gameModePanel.sprite = table.isRotation ? extraGamesImage : basicGamesImage;
+        if (!ReferenceEquals(null, basicGamesButton)) basicGamesButton.SetActive(!table.isRotation);
+        if (!ReferenceEquals(null, extraGamesButton)) extraGamesButton.SetActive(table.isRotation);
+        if (!ReferenceEquals(null, gameModeExtraBg)) gameModeExtraBg.SetActive(table.isRotation);
+        if (!ReferenceEquals(null, gameModeTitleExtra)) gameModeTitleExtra.SetActive(table.isRotation);
+#endif
         Transform selection = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ModeSelection");
         Transform selectionPoint;
         switch (mode)
@@ -251,8 +336,44 @@ public class MenuManager : UdonSharpBehaviour
                 table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
+#if EIJIS_ROTATION
+            case BilliardsModule.GAMEMODE_ROTATION_15:
+                modeName = table._translations.Get("Rotation(15)");
+                //modeName = "Rotation(15)";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Rotation15");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_ROTATION_10:
+                modeName = table._translations.Get("Rotation(10)");
+                //modeName = "Rotation(10)";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Rotation10");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_ROTATION_9:
+                modeName = table._translations.Get("Rotation(9)");
+                //modeName = "Rotation(9)";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Rotation9");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_ROTATION_6:
+                modeName = table._translations.Get("Rotation(6)");
+                //modeName = "Rotation(6)";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Rotation6");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+#endif
         }
         gameModeDisplay.text = modeName;
+#if EIJIS_CUSTOM_GOAL_POINT
+        if (table.gameStateLocal == 1 && table.isPlayer && table.isRotation)
+        {
+            _EnableMenuGoalPoint();
+        }
+        else
+        {
+            _DisableMenuGoalPoint();
+        }
+#endif
     }
     public void _RefreshPhysics()
     {
@@ -263,7 +384,41 @@ public class MenuManager : UdonSharpBehaviour
     {
         tableDisplay.text = table._translations.Get((string)table.tableModels[table.tableModelLocal].GetProgramVariable("TABLENAME")); // auto translate by cheese
     }
+#if EIJIS_CUSTOM_GOAL_POINT
 
+    public void _RefreshGoalPoint()
+    {
+        if (!ReferenceEquals(null, goalPointOrangeDisplay))
+        {
+            int teamId = 0;
+            int index = Array.IndexOf(table.ROTATION_GOAL_POINTS, (ushort)(table.goalPointsLocal[teamId]));
+            selectedGoalPointIndex[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                goalPointOrangeDisplay.text = $"{table.ROTATION_GOAL_POINTS[index]}";
+            }
+            else
+            {
+                goalPointOrangeDisplay.text = $"{table.goalPointsLocal[teamId]}";
+            }
+        }
+
+        if (!ReferenceEquals(null, goalPointBlueDisplay))
+        {
+            int teamId = 1;
+            int index = Array.IndexOf(table.ROTATION_GOAL_POINTS, (ushort)(table.goalPointsLocal[teamId]));
+            selectedGoalPointIndex[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                goalPointBlueDisplay.text = $"{table.ROTATION_GOAL_POINTS[index]}";
+            }
+            else
+            {
+                goalPointBlueDisplay.text = $"{table.goalPointsLocal[teamId]}";
+            }
+        }
+    }
+#endif
     public void _RefreshToggleSettings()
     {
         TeamsToggle_button.SetIsOnWithoutNotify(table.teamsLocal);
@@ -278,6 +433,11 @@ public class MenuManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
         RequireCallShotToggle_button.SetIsOnWithoutNotify(table.requireCallShotLocal);
+        if (!ReferenceEquals(null, CallPassOptionToggle_button))
+        {
+            CallPassOptionToggle_button.gameObject.SetActive(table.requireCallShotLocal);
+            CallPassOptionToggle_button.SetIsOnWithoutNotify(table.callPassOptionLocal);
+        }
 #if EIJIS_SEMIAUTOCALL
         SemiAutoCallToggle_button.gameObject.SetActive(table.requireCallShotLocal);
         SemiAutoCallToggle_button.SetIsOnWithoutNotify(table.semiAutoCallLocal);
@@ -304,6 +464,9 @@ public class MenuManager : UdonSharpBehaviour
             _DisableLoadMenu();
             _DisableUndoMenu();
             _DisableMenuJoinLeave();
+#if EIJIS_CUSTOM_GOAL_POINT
+            _DisableMenuGoalPoint();
+#endif
             return;
         }
         Transform table_base = table._GetTableBase().transform;
@@ -316,6 +479,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_CUSTOM_GOAL_POINT
+                _DisableMenuGoalPoint();
+#endif
                 break;
             case 1://lobby
                 if (table.isPlayer)
@@ -331,6 +497,12 @@ public class MenuManager : UdonSharpBehaviour
                 menu_Join.localScale = joinMenuScale;
                 _EnableMenuJoinLeave();
                 _RefreshTeamJoinButtons();
+#if EIJIS_CUSTOM_GOAL_POINT
+                if (table.isPlayer && table.isRotation)
+                    _EnableMenuGoalPoint();
+                else
+                    _DisableMenuGoalPoint();
+#endif
                 break;
             case 2://game live
                 _DisableLobbyMenu();
@@ -360,6 +532,9 @@ public class MenuManager : UdonSharpBehaviour
                     _EnableMenuJoinLeave();
                     _RefreshTeamJoinButtons();
                 }
+#if EIJIS_CUSTOM_GOAL_POINT
+                _DisableMenuGoalPoint();
+#endif
                 break;
             case 3://game ended/reset
                 _DisableLobbyMenu();
@@ -367,6 +542,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_CUSTOM_GOAL_POINT
+                _DisableMenuGoalPoint();
+#endif
                 break;
         }
         Transform leave_Button = menu_Join.Find("LeaveButton");
@@ -411,6 +589,18 @@ public class MenuManager : UdonSharpBehaviour
     {
         table._TriggerGameStart();
     }
+#if EIJIS_EXTRA_GAMES
+    public void BasicGamePage()
+    {
+        if (!table.isRotation) return;
+        table._TriggerGameModeChanged(0);
+    }
+    public void ExtraGamePage()
+    {
+        if (table.isRotation) return;
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_15);
+    }
+#endif
     public void Mode8Ball()
     {
         table._TriggerGameModeChanged(0);
@@ -423,6 +613,24 @@ public class MenuManager : UdonSharpBehaviour
     public void Mode10Ball()
     {
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_10BALL);
+    }
+#endif
+#if EIJIS_ROTATION
+    public void ModeRotation15()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_15);
+    }
+    public void ModeRotation10()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_10);
+    }
+    public void ModeRotation9()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_9);
+    }
+    public void ModeRotation6()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_6);
     }
 #endif
     public void Mode4Ball()
@@ -502,6 +710,13 @@ public class MenuManager : UdonSharpBehaviour
     {
         table._TriggerRequireCallShotChanged(RequireCallShotToggle_button.isOn);
     }
+    [SerializeField] private Toggle CallPassOptionToggle_button;
+    public void CallPassOptionToggle()
+    {
+        if (ReferenceEquals(null, CallPassOptionToggle_button)) return;
+        
+        table._TriggerCallPassOptionChanged(CallPassOptionToggle_button.isOn);
+    }
 #if EIJIS_SEMIAUTOCALL
     [SerializeField] private Toggle SemiAutoCallToggle_button;
     public void SemiAutoCallToggle()
@@ -564,7 +779,53 @@ public class MenuManager : UdonSharpBehaviour
 
         table._TriggerPhysicsChanged(selectedPhysics);
     }
+#if EIJIS_CUSTOM_GOAL_POINT
 
+    public void OrangeGoalPointRight()
+    {
+        uint teamId = 0;
+        if (selectedGoalPointIndex[teamId] < (table.ROTATION_GOAL_POINTS.Length - 1))
+            selectedGoalPointIndex[teamId]++;
+        else
+            selectedGoalPointIndex[teamId] = 0;
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+    public void OrangeGoalPointLeft()
+    {
+        uint teamId = 0;
+        if (selectedGoalPointIndex[teamId] > 0)
+            selectedGoalPointIndex[teamId]--;
+        else
+            selectedGoalPointIndex[teamId] = (uint)(table.ROTATION_GOAL_POINTS.Length - 1);
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+
+    public void BlueGoalPointRight()
+    {
+        uint teamId = 1;
+        if (selectedGoalPointIndex[teamId] < (table.ROTATION_GOAL_POINTS.Length - 1))
+            selectedGoalPointIndex[teamId]++;
+        else
+            selectedGoalPointIndex[teamId] = 0;
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+    public void BlueGoalPointLeft()
+    {
+        uint teamId = 1;
+        if (selectedGoalPointIndex[teamId] > 0)
+            selectedGoalPointIndex[teamId]--;
+        else
+            selectedGoalPointIndex[teamId] = (uint)(table.ROTATION_GOAL_POINTS.Length - 1);
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+#endif
     public Slider cueSmoothingSlider;
     public TextMeshProUGUI cueSmoothingText;
     public void setCueSmoothing()
@@ -819,11 +1080,17 @@ public class MenuManager : UdonSharpBehaviour
 
     public void _EnableSkipTurnMenu()
     {
+#if EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
+        table._LogInfo("  MenuManager::_EnableSkipTurnMenu()");
+#endif
         buttonSkipTurn.SetActive(true);
     }
 
     public void _DisableSkipTurnMenu()
     {
+#if EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
+        table._LogInfo("  MenuManager::_DisableSkipTurnMenu()");
+#endif
         buttonSkipTurn.SetActive(false);
     }
     public void _EnableSnookerUndoMenu()
@@ -892,6 +1159,18 @@ public class MenuManager : UdonSharpBehaviour
     public void _StateChangeCallSafetyMenu(bool state)
     {
         buttonCallSafety.GetComponent<Image>().color = state ? buttonCallSafetyOnColor : buttonCallSafetyOffColor;
+    }
+#endif
+#if EIJIS_CUSTOM_GOAL_POINT
+
+    public void _EnableMenuGoalPoint()
+    {
+        if (!ReferenceEquals(null, menuGoalPoint)) menuGoalPoint.SetActive(true);
+    }
+
+    public void _DisableMenuGoalPoint()
+    {
+        if (!ReferenceEquals(null, menuGoalPoint)) menuGoalPoint.SetActive(false);
     }
 #endif
 }

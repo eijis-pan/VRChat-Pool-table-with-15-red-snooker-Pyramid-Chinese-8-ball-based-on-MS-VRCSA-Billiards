@@ -6,6 +6,7 @@
 #define EIJIS_GUIDELINE2TOGGLE
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
+#define EIJIS_ROTATION
 
 using System;
 using UdonSharp;
@@ -16,7 +17,11 @@ using VRC.Udon;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class LegacyPhysicsManager : UdonSharpBehaviour
 {
+#if EIJIS_MANY_BALLS
+    public string PHYSICSNAME = "<color=#4287F5>Legacy (max32balls)</color>";
+#else
     public string PHYSICSNAME = "<color=#4287F5>Legacy</color>";
+#endif
 #if HT_QUEST
    private const float k_MAX_DELTA = 0.05f; // max time to process per frame on quest (~4)
 #else
@@ -166,19 +171,23 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 if (!table.canHitCueBall && !ReferenceEquals(null, Networking.LocalPlayer) && Networking.LocalPlayer.IsUserInVR())
                 {
 #if EIJIS_CALLSHOT
-#if EIJIS_10BALL
+#if EIJIS_10BALL && EIJIS_ROTATION
                     if (table.isPyramid ||
-                        (table.requireCallShotLocal && (table.is8Ball || table.is9Ball || table.is10Ball)))
+                        (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation)))
 #else
                     if (table.isPyramid ||
-                            (table.requireCallShotLocal && (table.is8Ball || table.is9Ball /* || table.is10Ball */ )))
+                            (table.requireCallShotLocal && table.is8Ball))
 #endif
 #else
                     if (table.isPyramid)
 #endif
                     {
                         bool hit = false;
+#if EIJIS_ROTATION
+                        for (int i = (table.isRotation6Balls ? 2 : 1); i < balls_P.Length; i++)
+#else
                         for (int i = 1; i < balls_P.Length; i++)
+#endif
                         {
                             if ((lpos2 - balls_P[i]).sqrMagnitude < k_BALL_RSQR)
                             {
@@ -194,10 +203,10 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                     }
 #if EIJIS_CALLSHOT
 
-#if EIJIS_10BALL
-                    if (table.requireCallShotLocal &&(table.is8Ball || table.is9Ball || table.is10Ball))
+#if EIJIS_10BALL && EIJIS_ROTATION
+                    if (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation))
 #else
-                    if (table.requireCallShotLocal &&(table.is8Ball || table.is9Ball /* || table.is10Ball */ ))
+                    if (table.requireCallShotLocal && table.is8Ball)
 #endif
                     {
                         bool hit = false;
@@ -655,7 +664,11 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
 
     private bool isCueBallTouching()
     {
+#if EIJIS_ROTATION
+        if (table.is8Ball || table.isRotation15Balls) // 8 ball
+#else
         if (table.is8Ball) // 8 ball
+#endif
         {
             // Check all
             for (int i = 1; i < 16; i++)
@@ -666,7 +679,11 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 }
             }
         }
+#if EIJIS_ROTATION
+        else if (table.is9Ball || table.isRotation9Balls) // 9
+#else
         else if (table.is9Ball) // 9
+#endif
         {
             // Only check to 9 ball
             for (int i = 1; i <= 9; i++)
@@ -677,8 +694,8 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 }
             }
         }
-#if EIJIS_10BALL
-        else if (table.is10Ball) // 10
+#if EIJIS_10BALL && EIJIS_ROTATION
+        else if (table.is10Ball || table.isRotation10Balls) // 10
         {
             // Only check to 10 ball
             for (int i = 1; i <= 10; i++)
@@ -701,6 +718,19 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 }
             }
             for (int i = 25; i < 31; i++)
+            {
+                if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
+                {
+                    return true;
+                }
+            }
+        }
+#endif
+#if EIJIS_ROTATION
+        else if (table.isRotation6Balls) // 6
+        {
+            // Only check to 6 ball
+            for (int i = 2; i <= 7; i++)
             {
                 if ((balls_P[0] - balls_P[i]).sqrMagnitude < k_BALL_DSQR)
                 {

@@ -6,13 +6,14 @@
 #define EIJIS_CUSHION_EFFECT
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
-#define EIJIS_CALLSHOT_E
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_ROTATION
 
 // #define EIJIS_DEBUG_PIRAMIDSCORE
 // #define EIJIS_DEBUG_CALLSHOT_MARKER
+// #define EIJIS_DEBUG_PUSHOUT
 
 using UdonSharp;
 using UnityEngine;
@@ -40,19 +41,14 @@ public class GraphicsManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
 	[Header("Pocket Billiard Call-shot")]
-#if EIJIS_CALLSHOT_E
-	// [SerializeField] Material calledPocketWhite;
-	// [SerializeField] Material calledPocketGray;
-#else
 	[SerializeField] Material calledPocketBlue;
 	[SerializeField] Material calledPocketOrange;
 	[SerializeField] Material calledPocketWhite;
 	[SerializeField] Material calledPocketGray;
-#endif
-	[SerializeField] Material calledPocketSphereBlue;
-	[SerializeField] Material calledPocketSphereOrange;
-	[SerializeField] Material calledPocketSphereWhite;
-	[SerializeField] Material calledPocketSphereGray;
+	[SerializeField] Material callLockOffBlue;
+	[SerializeField] Material callLockOffOrange;
+	[SerializeField] Material callLockOffWhite;
+	[SerializeField] Material callLockOn;
 #endif
 
 	[Header("Text")]
@@ -104,6 +100,9 @@ public class GraphicsManager : UdonSharpBehaviour
 #endif
 
 	private float introAnimationTime = 0.0f;
+#if EIJIS_ROTATION
+	private uint introAnimationBalls = 0xFFFFu;
+#endif
 
 	private uint ANDROID_UNIFORM_CLOCK = 0x00u;
 	private uint ANDROID_CLOCK_DIVIDER = 0x8u;
@@ -121,15 +120,23 @@ public class GraphicsManager : UdonSharpBehaviour
 	private Transform[] ballTransforms;
 	private Vector3[] ballPositions;
 
+#if EIJIS_PUSHOUT
+	private Material pushOutDont;
+	private Material pushOutDoing;
+	private MeshRenderer pushOutRenderer;
+#endif
 #if EIJIS_CALLSHOT
 	private Material callSafetyOn;
 	private Material callSafetyOff;
 	private MeshRenderer callSafetyRenderer;
-
+	private MeshRenderer callShotLockRenderer;
 #endif
 	public void _Init(BilliardsModule table_)
 	{
 		table = table_;
+#if EIJIS_DEBUG_PUSHOUT
+		table._LogInfo("  GraphicsManager::_Init()");
+#endif
 
 		// copy some temporaries
 		balls = table.balls;
@@ -185,6 +192,38 @@ public class GraphicsManager : UdonSharpBehaviour
 			caromCushionTouchTime[i] = 0;
 		}
 #endif
+#if EIJIS_PUSHOUT
+		
+		Transform pushOut = table.transform.Find("intl.controls/pushOut");
+		if (ReferenceEquals(null, pushOut))
+		{
+			table._LogInfo("  intl.controls/pushOut object not set.");
+		}
+		else
+		{
+#if EIJIS_DEBUG_PUSHOUT
+			table._LogInfo("    found intl.controls/pushOut");
+#endif
+			table.pushOutOrb = pushOut.gameObject;
+			pushOutRenderer = pushOut.Find("render").GetComponent<MeshRenderer>();
+			if (!ReferenceEquals(null, pushOutRenderer))
+			{
+#if EIJIS_DEBUG_PUSHOUT
+				table._LogInfo("    found render");
+#endif
+				pushOutDont = pushOutRenderer.sharedMaterial;
+			}
+			Transform toggleMaterial = pushOut.Find("toggleMaterial");
+			if (!ReferenceEquals(null, toggleMaterial))
+			{
+#if EIJIS_DEBUG_PUSHOUT
+				table._LogInfo("    found toggleMaterial");
+#endif
+				pushOutDoing = toggleMaterial.GetComponent<MeshRenderer>().sharedMaterial;
+			}
+		}
+		
+#endif
 #if EIJIS_CALLSHOT
 		Transform callSafety = table.transform.Find("intl.controls/callSafety");
 		if (ReferenceEquals(null, callSafety))
@@ -199,6 +238,31 @@ public class GraphicsManager : UdonSharpBehaviour
 			{
 				callSafetyRenderer = safetyCalled.GetComponent<MeshRenderer>();
 			}
+		}
+
+		Transform callShotLock = table.transform.Find("intl.controls/callLock");
+		if (ReferenceEquals(null, callShotLock))
+		{
+			table._LogInfo("  intl.controls/callLock object not set.");
+		}
+		else
+		{
+			table.callShotLockOrb = callShotLock.gameObject;
+			Transform callShotLoking = callShotLock.Find("render");
+			if (!ReferenceEquals(null, callShotLoking))
+			{
+				callShotLockRenderer = callShotLoking.GetComponent<MeshRenderer>();
+			}
+		}
+
+		Transform skipTurn = table.transform.Find("intl.controls/skipturn");
+		if (ReferenceEquals(null, skipTurn))
+		{
+			table._LogInfo("  intl.controls/skipturn object not set.");
+		}
+		else
+		{
+			table.skipTurnOrb = skipTurn.gameObject;
 		}
 
 		devhitRenderers = table.transform.Find("intl.balls/dev-hit").GetComponent<MeshRenderer>();
@@ -349,7 +413,11 @@ public class GraphicsManager : UdonSharpBehaviour
 			introAnimationTime = 0.0f;
 
 		// Cueball drops late
+#if EIJIS_ROTATION
+		if ((introAnimationBalls & 0x1u) != 0) tickIntroBall(table.balls[0].transform, 0.33f);
+#else
 		tickIntroBall(table.balls[0].transform, 0.33f);
+#endif
 
 #if EIJIS_MANY_BALLS
 		for (int i = 1; i < BilliardsModule.MAX_BALLS; i++)
@@ -357,7 +425,11 @@ public class GraphicsManager : UdonSharpBehaviour
         for (int i = 1; i < 16; i++)
 #endif
 		{
+#if EIJIS_ROTATION
+			if ((introAnimationBalls & (0x1u << i)) != 0) tickIntroBall(table.balls[i].transform, 0.84f + i * 0.03f);
+#else
 			tickIntroBall(table.balls[i].transform, 0.84f + i * 0.03f);
+#endif
 		}
 	}
 
@@ -738,9 +810,16 @@ public class GraphicsManager : UdonSharpBehaviour
 	}
 	#endregion
 
+#if EIJIS_ROTATION
+    public void _PlayIntroAnimation(uint balls)
+#else
 	public void _PlayIntroAnimation()
+#endif
 	{
 		introAnimationTime = 2.0f;
+#if EIJIS_ROTATION
+        introAnimationBalls = balls;
+#endif
 	}
 
 	public void _SpawnFourBallPoint(Vector3 pos, bool plus)
@@ -875,10 +954,10 @@ int uniform_cue_colour;
 	{
 		if (table.isCarom) updateFourBallCues();
 #if EIJIS_CALLSHOT
-		else if ((table.is9Ball || table.is10Ball) && table.requireCallShotLocal) updateEightBallCues(idsrc);
+		else if ((table.is10Ball || table.isRotation) && table.requireCallShotLocal) updateEightBallCues(idsrc);
 #endif
-#if EIJIS_10BALL
-		else if (table.is9Ball || table.is10Ball) updateNineBallCues();
+#if EIJIS_10BALL && EIJIS_ROTATION
+		else if (table.is9Ball || table.is10Ball || table.isRotation) updateNineBallCues();
 #else
 		else if (table.is9Ball) updateNineBallCues();
 #endif
@@ -963,9 +1042,9 @@ int uniform_cue_colour;
 		}
 #if EIJIS_CALLSHOT
 #if EIJIS_10BALL
-		else if ((table.is9Ball || table.is10Ball) && !table.requireCallShotLocal)
+		else if (table.is9Ball || (table.is10Ball && !table.requireCallShotLocal))
 #else
-		else if (table.is9Ball && !table.requireCallShotLocal)
+		else if (table.is9Ball)
 #endif
 #else
 #if EIJIS_10BALL
@@ -1054,7 +1133,11 @@ int uniform_cue_colour;
 
 	public void _ShowBalls()
 	{
+#if EIJIS_ROTATION		
+		if (table.is9Ball || table.isRotation9Balls)
+#else
 		if (table.is9Ball)
+#endif
 		{
 			for (int i = 0; i <= 9; i++)
 				table.balls[i].SetActive(true);
@@ -1067,7 +1150,11 @@ int uniform_cue_colour;
 				table.balls[i].SetActive(false);
 		}
 #if EIJIS_10BALL
+#if EIJIS_ROTATION		
+		else if (table.is10Ball || table.isRotation10Balls)
+#else
 		else if (table.is10Ball)
+#endif
 		{
 			for (int i = 0; i <= 10; i++)
 				table.balls[i].SetActive(true);
@@ -1076,6 +1163,21 @@ int uniform_cue_colour;
 			for (int i = 11; i < BilliardsModule.MAX_BALLS; i++)
 #else
 			for (int i = 11; i < 16; i++)
+#endif
+				table.balls[i].SetActive(false);
+		}
+#endif
+#if EIJIS_ROTATION
+		else if (table.isRotation6Balls)
+		{
+			for (int i = 0; i <= 7; i++)
+				table.balls[i].SetActive(true);
+
+			table.balls[1].SetActive(false);
+#if EIJIS_MANY_BALLS
+			for (int i = 8; i < BilliardsModule.MAX_BALLS; i++)
+#else
+            for (int i = 8; i < 16; i++)
 #endif
 				table.balls[i].SetActive(false);
 		}
@@ -1156,20 +1258,10 @@ int uniform_cue_colour;
 
 		scorecard_info.SetActive(true);
 		scorecard_gameobject.SetActive(true);
-#if EIJIS_PYRAMID
-#if EIJIS_CAROM
-#if EIJIS_BANKING
-		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
+#if EIJIS_PYRAMID && EIJIS_CAROM && EIJIS_BANKING && EIJIS_ROTATION
+		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 : (table.isRotation ? 1 :
 				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion || table.isBanking ? 2 : table.gameModeLocal)
-			));
-#else
-		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
-			(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion ? 2 : table.gameModeLocal)
-			));
-#endif
-#else
-        scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 : table.gameModeLocal));
-#endif
+			)));
 #else
         scorecard.SetInt("_GameMode", (int)table.gameModeLocal);
 #endif
@@ -1313,6 +1405,18 @@ int uniform_cue_colour;
 			ballMaterial.SetTexture("_MainTex", table.textureSets[3]);
 		}
 #endif
+#if EIJIS_ROTATION
+		else if (table.isRotation)
+		{
+			pColourErr = table.k_colour_foul;
+			pColour2 = table.k_colour_default;
+
+			pColour0 = table.k_teamColour_spots;
+			pColour1 = table.k_teamColour_stripes;
+            
+			ballMaterial.SetTexture("_MainTex", usColorTexture);
+		}
+#endif
 		else // Standard 8 ball derivatives
 		{
 			pColourErr = table.k_colour_foul;
@@ -1336,6 +1440,13 @@ int uniform_cue_colour;
 		table.devhit.SetActive(false);
 		winnerText.gameObject.SetActive(false);
 		table.markerObj.SetActive(false);
+#if EIJIS_ROTATION
+		if (!ReferenceEquals(null, table.markerHeadSpot)) table.markerHeadSpot.SetActive(false);
+		if (!ReferenceEquals(null, table.markerCenterSpot)) table.markerCenterSpot.SetActive(false);
+		if (!ReferenceEquals(null, table.markerFootSpot)) table.markerFootSpot.SetActive(false);
+		if (!ReferenceEquals(null, table.requestBreakOrange)) table.requestBreakOrange.SetActive(false);
+		if (!ReferenceEquals(null, table.requestBreakBlue)) table.requestBreakBlue.SetActive(false);
+#endif
 		scorecard_info.SetActive(false);
 		scorecard_gameobject.SetActive(false);
 		table.marker9ball.SetActive(false);
@@ -1352,11 +1463,16 @@ int uniform_cue_colour;
 		orangeScore.gameObject.SetActive(false);
 		blueScore.gameObject.SetActive(false);
 		snookerInstruction.gameObject.SetActive(false);
+#if EIJIS_PUSHOUT
+		if (!ReferenceEquals(null, table.pushOutOrb)) table.pushOutOrb.SetActive(false);
+#endif
 #if EIJIS_CALLSHOT
 		if (!ReferenceEquals(null, table.callSafetyOrb)) table.callSafetyOrb.SetActive(false);
+		if (!ReferenceEquals(null, table.callShotLockOrb)) table.callShotLockOrb.SetActive(false);
+		if (!ReferenceEquals(null, table.skipTurnOrb)) table.skipTurnOrb.SetActive(false);
 #endif
 		_HideTimers();
-#if EIJIS_CALLSHOT && EIJIS_CALLSHOT_E
+#if EIJIS_CALLSHOT
 		_DisablePointPocketMarker();
 #else
 		_UpdatePointPocketMarker(0, false);
@@ -1618,35 +1734,9 @@ int uniform_cue_colour;
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
 			bool enable = (pointPockets & (0x1u << i)) != 0;
-#if EIJIS_CALLSHOT_E
 			table.pointPocketMarkers[i].SetActive(table.requireCallShotLocal);
-#endif
-// 			if (enable)
-// 			{
-// #if EIJIS_CALLSHOT_E
-// 				// table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketWhite;
-// #else
-// 				table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material =
-// 					(callShotLock ? calledPocketGray :
-// 						(table.isTableOpenLocal ? calledPocketWhite :
-// 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
-// #endif
-// 				table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
-// 					(callShotLock ? calledPocketSphereGray :
-// 						(table.isTableOpenLocal ? calledPocketSphereWhite :
-// 							(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
-// 			}
-#if EIJIS_CALLSHOT_E
-			// else
-			// {
-			// 	table.pointPocketMarkers[i].GetComponent<MeshRenderer>().material = calledPocketGray;
-			// }
-			// table.pointPocketMarkerBlock[i].GetComponent<MeshRenderer>().material = enable ? calledPocketWhite : calledPocketGray;
-			table.pointPocketMarkerBlock[i].SetActive(!enable);
-			table.pointPocketMarkerSphere[i].SetActive(enable);
-#else
-			table.pointPocketMarkers[i].SetActive(enable);
-#endif
+			table.pointPocketMarkerNoCall[i].SetActive(!enable);
+			table.pointPocketMarkerCalled[i].SetActive(enable);
 		}
 
 		table.menuManager._StateChangeCallLockMenu(callShotLock);
@@ -1667,11 +1757,16 @@ int uniform_cue_colour;
 	{
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
-			table.pointPocketMarkerSphere[i].GetComponent<MeshRenderer>().material =
-				(isLocking ? calledPocketSphereGray :
-					(table.isTableOpenLocal ? calledPocketSphereWhite :
-						(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketSphereBlue : calledPocketSphereOrange));
+			table.pointPocketMarkerCalled[i].GetComponent<MeshRenderer>().material =
+				(isLocking ? calledPocketGray :
+					(table.isTableOpenLocal ? calledPocketWhite :
+						(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
 		}
+		
+		if (!ReferenceEquals(null, callShotLockRenderer)) callShotLockRenderer.material =
+			(isLocking ? callLockOn :
+				(table.isTableOpenLocal ? callLockOffWhite :
+					(table.teamIdLocal ^ table.teamColorLocal) == 0 ? callLockOffBlue : callLockOffOrange));
 	}
 
 #endif
@@ -1679,6 +1774,7 @@ int uniform_cue_colour;
 	public void _UpdatePushOut(byte pushOutState)
 	{
 		table.menuManager._StateChangePushOutMenu(pushOutState == table.PUSHOUT_DOING);
+		if (!ReferenceEquals(null, pushOutRenderer)) pushOutRenderer.material = (pushOutState == table.PUSHOUT_DOING ? pushOutDoing : pushOutDont);
 	}
 
 #endif
