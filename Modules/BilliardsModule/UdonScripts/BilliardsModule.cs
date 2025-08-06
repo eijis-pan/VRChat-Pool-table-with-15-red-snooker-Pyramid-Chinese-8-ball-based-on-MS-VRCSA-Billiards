@@ -5450,7 +5450,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private void checkNextInKitchenThenMoveToCenter()
     {
         int target = findLowestUnpocketedBall(ballsPocketedLocal);
-        float kitchen_x = -k_SPOT_POSITION_X;
+        float kitchen_x = -k_TABLE_WIDTH / 2;
         if (ballsP[target].x < kitchen_x)
         {
             // next ballがkitchen内の場合はセンターに移動させる
