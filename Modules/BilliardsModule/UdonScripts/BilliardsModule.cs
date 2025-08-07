@@ -231,6 +231,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private readonly int[] break_order_rotation_10ball = { 2, 7, 8, 1, 10, 9, 3, 5, 6, 4 };
     private readonly int[] break_order_rotation_9ball = { 2, 6, 7, 8, 9, 1, 3, 4, 5 };
     private readonly int[] break_order_rotation_6ball = { 2, 5, 6, 3, 7, 4 };
+    private readonly int[] pocketed_ball_upon_pool_order = { 2, 3, 4, 5, 6, 7, 8, 1, 9, 10, 11, 12, 13, 14, 15 };
 #endif
 #if EIJIS_CALLSHOT
     private readonly uint pocket_mask_8ball = 0xFFFEu;
@@ -7020,9 +7021,10 @@ public class BilliardsModule : UdonSharpBehaviour
         uint uponBalls = 0x0u;
         int uponBallsCount = 0;
         uint uponRacks = 0x0u;
-        uint ball_bit = isRotation6Balls ? 0x4u : 0x2u;
-        for (int i = (isRotation6Balls ? 2 : 1); i < ballsP.Length; i++)
+        for (int j = 0; j < pocketed_ball_upon_pool_order.Length; j++)
         {
+            int i = pocketed_ball_upon_pool_order[j];
+            uint ball_bit = 0x1u << i;
             if ((ballsPocketed & ball_bit) != 0x0u)
             {
 #if EIJIS_DEBUG_BALL_TOUCHING
@@ -7076,7 +7078,6 @@ public class BilliardsModule : UdonSharpBehaviour
                 // int rackPosNum = (int)((beforePos.x - k_rack_position.x) / k_BALL_DIAMETRE);
                 // uponRacks |= 0x1u << rackPosNum;
             }
-            ball_bit <<= 1;
         }
 
         targetPocketedLocal &= ~((uponBalls << 16) | (uponBalls & 0xFFFFu));
