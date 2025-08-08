@@ -43,6 +43,7 @@
 // #define EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
 // #define EIJIS_DEBUG_UNDO_REDO
 // #define EIJIS_DEBUG_BALL_TOUCHING
+// #define EIJIS_DEBUG_BALLS_POCKETED
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -455,6 +456,7 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public bool colorTurnLocal;
 #if EIJIS_ROTATION
     private uint nextBallRepositionStateLocal; // 0x01:的玉の移動選択可能, 0x02:手玉の移動選択可能, 0x04:再ブレイク要求選択可能, 0x08:的玉をフットに移動選択済み, 0x10:的玉をセンターに移動選択済み
+    private uint wasUponBalls;
     private int inningCountLocal;
     // private int[] winRackCountLocal = new int[2];
     public readonly ushort[] ROTATION_GOAL_POINTS =
@@ -1593,6 +1595,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_DEBUG_SCORE_SCREEN
         _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() goalPointsLocal = {goalPointsLocal[0]}, {goalPointsLocal[1]}, goalPointsSynced = {networkingManager.goalPointsSynced[0]}, {networkingManager.goalPointsSynced[1]}");
 #endif
+#if EIJIS_DEBUG_BALLS_POCKETED
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() ballsPocketed={networkingManager.ballsPocketedSynced:X}, targetPocketed={networkingManager.targetPocketedSynced:X}, otherPocketed={networkingManager.otherPocketedSynced:X}");
+#endif
 #if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_ROTATION
         updateInfoText();
 #endif
@@ -1636,6 +1641,8 @@ public class BilliardsModule : UdonSharpBehaviour
         Array.Copy(networkingManager.chainedPointsSynced, chainedPointsLocal, chainedPointsLocal.Length);
         inningCountLocal = networkingManager.inningCountSynced;
         // Array.Copy(networkingManager.winRackCountSynced, winRackCountLocal, winRackCountLocal.Length);
+        wasUponBalls = otherPocketedLocal >> 16;
+        otherPocketedLocal &= 0x0000FFFFu;
 #endif
 #if EIJIS_EXTERNAL_SCORE_SCREEN
         bool scoreUpdate = true;
@@ -3185,6 +3192,9 @@ public class BilliardsModule : UdonSharpBehaviour
 
         ballsV[id] = Vector3.zero;
         ballsW[id] = Vector3.zero;
+#if EIJIS_DEBUG_BALLS_POCKETED
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_TriggerPocketBall() ballsPocketed={ballsPocketedLocal:X}, targetPocketed={targetPocketedLocal:X}, otherPocketed={otherPocketedLocal:X}");
+#endif
     }
 
     public void _TriggerJumpShotFoul() { jumpShotFoul = true; }
@@ -3644,11 +3654,16 @@ public class BilliardsModule : UdonSharpBehaviour
                 
                 if (isOpponentSink || foulCondition)
                 {
-                    int uponBallsCount = pocketedballUponPool(ballsPocketedCurrent, k_TABLE_WIDTH / 2);
-                    if (uponBallsCount <= 0)
+                    uint ballsUponCurrent = pocketedballUponPool(ballsPocketedCurrent, k_TABLE_WIDTH / 2);
+                    if (ballsUponCurrent == 0)
                     {
-                        pocketedballUponPool(ballsPocketedCurrent, 0);
+                        ballsUponCurrent = pocketedballUponPool(ballsPocketedCurrent, 0);
                     }
+                    otherPocketedLocal &= 0x0000FFFFu;
+                    otherPocketedLocal |= ballsUponCurrent << 16;
+#if EIJIS_DEBUG_BALLS_POCKETED
+                    _LogInfo($"  ballsUponCurrent={ballsUponCurrent:X}, otherPocketed={otherPocketedLocal:X}");
+#endif
                 }
                 else
                 {
@@ -5385,7 +5400,22 @@ public class BilliardsModule : UdonSharpBehaviour
     public void _NextBallOnSpot(float x)
     {
         int target = findLowestUnpocketedBall(ballsPocketedLocal);
-        pocketedballUponPool(0x1u << target, x);
+        uint uponBalls = 0x1u << target;
+        if (x != 0 && wasUponBalls != 0)
+        {
+            for (int i = 0; i < ballsP.Length; i++)
+            {
+                uint ball_bit = 0x1u << i;
+                if ((wasUponBalls & ball_bit) != 0x0u)
+                {
+                    Vector3 pos = ballsP[i];
+                    pos.y += k_BALL_DIAMETRE;
+                    ballsP[i] =pos;
+                }
+            }
+            uponBalls |= wasUponBalls;
+        }
+        pocketedballUponPool(uponBalls, x);
 
         if (semiAutoCallLocal)
         {
@@ -5434,7 +5464,22 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             int target = findLowestUnpocketedBall(ballsPocketedLocal);
             float x = ((nextBallRepositionStateLocal & 0x08u) > 0 ? markerFootSpot.transform.localPosition.x : 0);
-            pocketedballUponPool(0x1u << target, x);
+            uint uponBalls = 0x1u << target;
+            if (x != 0 && wasUponBalls != 0)
+            {
+                for (int i = 0; i < ballsP.Length; i++)
+                {
+                    uint ball_bit = 0x1u << i;
+                    if ((wasUponBalls & ball_bit) != 0x0u)
+                    {
+                        Vector3 pos = ballsP[i];
+                        pos.y += k_BALL_DIAMETRE;
+                        ballsP[i] =pos;
+                    }
+                }
+                uponBalls |= wasUponBalls;
+            }
+            pocketedballUponPool(uponBalls, x);
         }
         
         if (semiAutoCallLocal)
@@ -7008,14 +7053,14 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_ROTATION
 
-    private int pocketedballUponPool(uint ballsPocketed, float posX /* , int safeLimitLoop */)
+    private uint pocketedballUponPool(uint ballsPocketed, float posX /* , int safeLimitLoop */)
     {
 #if EIJIS_DEBUG_BALL_TOUCHING
         _LogInfo($"EIJIS_DEBUG BilliardsModule::pocketedballUponPool(ballsPocketed = {ballsPocketed:X4}, posX = {posX})");
 #endif
         if (ballsPocketed == 0x0u)
         {                                                       
-            return -1; // 0x0u;
+            return 0x0u;
         }
 
         uint uponBalls = 0x0u;
@@ -7087,7 +7132,7 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             _LogWarn("failed to upon " + (posX == 0 ? "center" : (posX == k_SPOT_POSITION_X ? "foot" : $"x = {posX}")) + ". no place to put.");
         }
-        return uponBallsCount;
+        return uponBalls;
     }
 
     private int ballTouching(int n, uint checkTargetBalls)
