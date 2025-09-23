@@ -6,14 +6,17 @@
 #define EIJIS_CUSHION_EFFECT
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
+#define EIJIS_CALL_DEFAULT_LOCKING
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
 #define EIJIS_ROTATION
+#define EIJIS_BOWLARDS
 
 // #define EIJIS_DEBUG_PIRAMIDSCORE
 // #define EIJIS_DEBUG_CALLSHOT_MARKER
 // #define EIJIS_DEBUG_PUSHOUT
+// #define EIJIS_DEBUG_CALLCLEAR
 
 using UdonSharp;
 using UnityEngine;
@@ -49,6 +52,10 @@ public class GraphicsManager : UdonSharpBehaviour
 	[SerializeField] Material callLockOffOrange;
 	[SerializeField] Material callLockOffWhite;
 	[SerializeField] Material callLockOn;
+#endif
+#if EIJIS_BOWLARDS
+	[Header("Pocket Billiard Extra")]
+	[SerializeField] Material denyBallShadowMaterial;
 #endif
 
 	[Header("Text")]
@@ -129,13 +136,17 @@ public class GraphicsManager : UdonSharpBehaviour
 	private Material callSafetyOn;
 	private Material callSafetyOff;
 	private MeshRenderer callSafetyRenderer;
+#if EIJIS_CALL_DEFAULT_LOCKING
+	private MeshRenderer callClearRenderer;
+#else
 	private MeshRenderer callShotLockRenderer;
+#endif
 #endif
 	public void _Init(BilliardsModule table_)
 	{
 		table = table_;
-#if EIJIS_DEBUG_PUSHOUT
-		table._LogInfo("  GraphicsManager::_Init()");
+#if EIJIS_DEBUG_PUSHOUT || EIJIS_DEBUG_CALLCLEAR
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_Init()");
 #endif
 
 		// copy some temporaries
@@ -240,6 +251,22 @@ public class GraphicsManager : UdonSharpBehaviour
 			}
 		}
 
+#if EIJIS_CALL_DEFAULT_LOCKING
+		Transform callClear = table.transform.Find("intl.controls/callClear");
+		if (ReferenceEquals(null, callClear))
+		{
+			table._LogInfo("  intl.controls/callClear object not set.");
+		}
+		else
+		{
+			table.callClearOrb = callClear.gameObject;
+			Transform callShotClear = callClear.Find("render");
+			if (!ReferenceEquals(null, callShotClear))
+			{
+				callClearRenderer = callShotClear.GetComponent<MeshRenderer>();
+			}
+		}
+#else
 		Transform callShotLock = table.transform.Find("intl.controls/callLock");
 		if (ReferenceEquals(null, callShotLock))
 		{
@@ -254,6 +281,7 @@ public class GraphicsManager : UdonSharpBehaviour
 				callShotLockRenderer = callShotLoking.GetComponent<MeshRenderer>();
 			}
 		}
+#endif
 
 		Transform skipTurn = table.transform.Find("intl.controls/skipturn");
 		if (ReferenceEquals(null, skipTurn))
@@ -273,6 +301,9 @@ public class GraphicsManager : UdonSharpBehaviour
 
 	public void _InitializeTable()
 	{
+#if EIJIS_DEBUG_CALLCLEAR
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_InitializeTable()");
+#endif
 		Transform tableBase = table._GetTableBase().transform;
 		scorecard_gameobject = tableBase.transform.Find("scorecard").gameObject;
 		scorecard = scorecard_gameobject.GetComponent<MeshRenderer>().material;
@@ -1151,7 +1182,11 @@ int uniform_cue_colour;
 		}
 #if EIJIS_10BALL
 #if EIJIS_ROTATION		
+#if EIJIS_BOWLARDS		
+		else if (table.is10Ball || table.isRotation10Balls || table.isBowlards)
+#else
 		else if (table.is10Ball || table.isRotation10Balls)
+#endif
 #else
 		else if (table.is10Ball)
 #endif
@@ -1435,6 +1470,9 @@ int uniform_cue_colour;
 
 	public void _DisableObjects()
 	{
+#if EIJIS_DEBUG_CALLCLEAR
+		table._LogInfo("EIJIS_DEBUG GraphicsManager::_DisableObjects()");
+#endif
 		table.guideline.SetActive(false);
 		table.guideline2.SetActive(false);
 		table.devhit.SetActive(false);
@@ -1468,7 +1506,11 @@ int uniform_cue_colour;
 #endif
 #if EIJIS_CALLSHOT
 		if (!ReferenceEquals(null, table.callSafetyOrb)) table.callSafetyOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+		if (!ReferenceEquals(null, table.callClearOrb)) table.callClearOrb.SetActive(false);
+#else
 		if (!ReferenceEquals(null, table.callShotLockOrb)) table.callShotLockOrb.SetActive(false);
+#endif
 		if (!ReferenceEquals(null, table.skipTurnOrb)) table.skipTurnOrb.SetActive(false);
 #endif
 		_HideTimers();
@@ -1507,6 +1549,23 @@ int uniform_cue_colour;
 		}
 	}
 
+#if EIJIS_BOWLARDS
+	public void _SetBallsDenyMark(uint balls)
+	{
+		uint ball_bit = 0x1u;
+
+#if EIJIS_MANY_BALLS
+		for (int i = 0; i < BilliardsModule.MAX_BALLS; i++)
+#else
+		for (int i = 0; i < 16; i++)
+#endif
+		{
+			table.balls[i].GetComponent<MeshRenderer>().materials = new [] { ballMaterial, ((balls & ball_bit) == 0x0u) ? shadowMaterial : denyBallShadowMaterial };
+			ball_bit <<= 1;
+		}
+	}
+
+#endif
 	public void _UpdateLOD()
 	{
 		if (table.localPlayerDistant)
@@ -1739,7 +1798,9 @@ int uniform_cue_colour;
 			table.pointPocketMarkerCalled[i].SetActive(enable);
 		}
 
+#if !EIJIS_CALL_DEFAULT_LOCKING
 		table.menuManager._StateChangeCallLockMenu(callShotLock);
+#endif
 	}
 
 	public void _DisablePointPocketMarker()
@@ -1763,10 +1824,17 @@ int uniform_cue_colour;
 						(table.teamIdLocal ^ table.teamColorLocal) == 0 ? calledPocketBlue : calledPocketOrange));
 		}
 		
+#if EIJIS_CALL_DEFAULT_LOCKING
+		if (!ReferenceEquals(null, callClearRenderer)) callClearRenderer.material =
+			(isLocking ? callLockOn :
+				(table.isTableOpenLocal ? callLockOffWhite :
+					(table.teamIdLocal ^ table.teamColorLocal) == 0 ? callLockOffBlue : callLockOffOrange));
+#else
 		if (!ReferenceEquals(null, callShotLockRenderer)) callShotLockRenderer.material =
 			(isLocking ? callLockOn :
 				(table.isTableOpenLocal ? callLockOffWhite :
 					(table.teamIdLocal ^ table.teamColorLocal) == 0 ? callLockOffBlue : callLockOffOrange));
+#endif
 	}
 
 #endif
@@ -1823,6 +1891,10 @@ int uniform_cue_colour;
 				float height = table._GetTableBase().transform.Find(".TABLE_SURFACE").position.y + 0.0025f;
 				shadowMaterial.SetFloat("_Floor", height);
 				shadowMaterial.SetFloat("_Scale", table.k_BALL_RADIUS / 0.03f);//0.03f is the radius of the ball's 3D mesh
+#if EIJIS_BOWLARDS
+				denyBallShadowMaterial.SetFloat("_Floor", height);
+				denyBallShadowMaterial.SetFloat("_Scale", table.k_BALL_RADIUS / 0.03f);//0.03f is the radius of the ball's 3D mesh
+#endif
 			}
 #if EIJIS_MANY_BALLS
 			for (int i = 0; i < BilliardsModule.MAX_BALLS; i++)

@@ -7,6 +7,7 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
 #define EIJIS_ROTATION
+#define EIJIS_BOWLARDS
 
 using System;
 using UdonSharp;
@@ -68,6 +69,9 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
     float k_POCKET_WIDTH_CORNER;
     float k_POCKET_HEIGHT_CORNER;
     float k_CUSHION_RADIUS;
+#if EIJIS_BOWLARDS
+    public bool cueBallKichenLineOverCheck = false;
+#endif
 
     [NonSerialized] public BilliardsModule table_;
     public void _Init()
@@ -171,9 +175,9 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 if (!table.canHitCueBall && !ReferenceEquals(null, Networking.LocalPlayer) && Networking.LocalPlayer.IsUserInVR())
                 {
 #if EIJIS_CALLSHOT
-#if EIJIS_10BALL && EIJIS_ROTATION
+#if EIJIS_10BALL && EIJIS_ROTATION && EIJIS_BOWLARDS
                     if (table.isPyramid ||
-                        (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation)))
+                        (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation || table.isBowlards)))
 #else
                     if (table.isPyramid ||
                             (table.requireCallShotLocal && table.is8Ball))
@@ -203,8 +207,8 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                     }
 #if EIJIS_CALLSHOT
 
-#if EIJIS_10BALL && EIJIS_ROTATION
-                    if (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation))
+#if EIJIS_10BALL && EIJIS_ROTATION && EIJIS_BOWLARDS
+                    if (table.requireCallShotLocal && (table.is8Ball || table.is10Ball || table.isRotation || table.isBowlards))
 #else
                     if (table.requireCallShotLocal && table.is8Ball)
 #endif
@@ -315,6 +319,18 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
             moved[0] = deltaPos != Vector3.zero;
 
             ballsMoving |= stepOneBall(0, balls, balls_P, balls_V, balls_W, sn_pocketed, moved);
+#if EIJIS_BOWLARDS
+            
+            if (cueBallKichenLineOverCheck)
+            {
+                float quarterTable = k_TABLE_WIDTH / 2;
+                if (-quarterTable < balls_P[0].x)
+                {
+                    table._TriggerCueBallKichenLineOver();
+                    cueBallKichenLineOverCheck = false;
+                }
+            }
+#endif
         }
 
         // Run main simulation / inter-ball collision
@@ -694,8 +710,8 @@ public class LegacyPhysicsManager : UdonSharpBehaviour
                 }
             }
         }
-#if EIJIS_10BALL && EIJIS_ROTATION
-        else if (table.is10Ball || table.isRotation10Balls) // 10
+#if EIJIS_10BALL && EIJIS_ROTATION && EIJIS_BOWLARDS
+        else if (table.is10Ball || table.isRotation10Balls || table.isBowlards) // 10
         {
             // Only check to 10 ball
             for (int i = 1; i <= 10; i++)

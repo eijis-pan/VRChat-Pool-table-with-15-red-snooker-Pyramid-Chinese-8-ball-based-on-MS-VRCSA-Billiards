@@ -1,4 +1,5 @@
 ﻿#define EIJIS_SNOOKER15REDS
+#define EIJIS_BOWLARDS
 
 using System;
 using UdonSharp;
@@ -94,6 +95,9 @@ public class PracticeManager : UdonSharpBehaviour
             return;
         }
 
+#if EIJIS_BOWLARDS
+        table.networkingManager.undoCountSynced++;
+#endif
         load(newPtr);
     }
 

@@ -31,6 +31,10 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     private PlayerRow[] scoreSyncRows = new PlayerRow[10];
 #endif
     
+    [SerializeField] private int gameScoreType;
+    public const int GAME_SCORE_TYPE_ROTATION = 0;
+    public const int GAME_SCORE_TYPE_BOWLARDS = 1;
+    
 #if EIJIS_MNBK_AUTOCOUNTER
     [UdonSynced(UdonSyncMode.None)]
     private bool EditLocked = true;
@@ -324,6 +328,8 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         editCounterIndex = 2; // Counter1 Safety
         editSelectionUpdate();
 #endif
+        
+        initValues();
     }   
     
     /// <summary>
@@ -742,6 +748,10 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     
     public void UpdateGameNameWithNumber(string ganeName, int number)
     {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::UpdateGameNameWithNumber() ganeName => {ganeName}, number => {number}");
+#endif
+
         headerRow.SetName($"{ganeName} [{number}]");
         
         // if (!ReferenceEquals(null, cascadeScoreScreen))
@@ -935,7 +945,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         int team1Goal,
         int team1HighRun,
         int team1Foul,
-        string infoText,
+        // string infoText,
         int inningCount
     )
     {
@@ -949,14 +959,6 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         DecodeScoreSyncValues_Rotation(values);
     }
     
-//     public void updateGoalPoint_Rotation(int teamIndex, int goalPoint)
-//     {
-// #if DEBUG_EIJIS_SCORE_SCREEN
-//         table._Log($"TKCH BilliardsScoreScreen::updateGoalPoint_Rotation(teamIndex = {teamIndex}, goalPoint = {goalPoint})");
-// #endif
-//         teamPlayers[teamIndex].GetTeamRow().SetGoalPoint_Rotation(goalPoint);
-//     }
-
     public void updateGoalPoint_Rotation(int team0Goal, int team1Goal)
     {
 #if DEBUG_EIJIS_SCORE_SCREEN
@@ -977,20 +979,20 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     private int[] messageKeys = new[] { -1, -1 };
     private string[] messages = new string[2];
     
-    public void clearInfoText_Rotation()
+    public void clearInfoText()
     {
 #if DEBUG_EIJIS_SCORE_SCREEN
-        table._Log($"TKCH BilliardsScoreScreen::clearInfoText_Rotation()");
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::clearInfoText()");
 #endif
         messageKeys = new[] { -1, -1 };
         messages = new string[2];
         footerRow.SetInfoText(" " /* String.Empty */);
     }
 
-    public void updateInfoText_Rotation(int messageKey, string message)
+    public void updateInfoText(int messageKey, string message)
     {
 #if DEBUG_EIJIS_SCORE_SCREEN
-        table._Log($"TKCH BilliardsScoreScreen::updateInfoText_Rotation(messageKey = {messageKey}, message = {message})");
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::updateInfoText(messageKey = {messageKey}, message = {message})");
 #endif
         bool appended = false;
         for (int i = 0; i < messageKeys.Length; i++)
@@ -1061,6 +1063,134 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         footerRow.SetInfoText(msg);
     }
 
+    public void updateRegulationText(string tableName, uint timer, bool requireCallShot, bool noGuideline, bool noLocking, 
+        bool isPractice, byte undoCount, bool wasLoadUsed, bool wasPlayerChanged)
+    {
+        string shotClock = timer <= 0 ? "<color=\"red\">none</color>" : timer.ToString();
+        string callShot = requireCallShot ? "ON" : "<color=\"red\">none</color>";
+        string guideline = noGuideline ? "none" : "<color=\"red\">ON</color>";
+        string cueLock = noLocking ? "none" : "<color=\"red\">ON</color>";
+        string usedUndoCount = 0 < undoCount ? $"<color=\"red\">{undoCount}</color>" : undoCount.ToString();
+        string practiceMode = isPractice ? "  |  <color=\"red\">Practice mode</color>" : String.Empty;
+        string playerChanged = wasPlayerChanged ? "  |  <color=\"magenta\">Player changed</color>" : String.Empty;
+        string continueFromSavedCode = wasLoadUsed ? "  |  <color=\"lime\">Continue from saved code</color>" : String.Empty;
+        string msg = 
+            $"TableModel : {tableName}  |  " + 
+            $"UndoCount : {usedUndoCount}" +
+            practiceMode +
+            $"\nShotClock : {shotClock}  |  " + 
+            $"CueGuideLine : {guideline}" + 
+            playerChanged +
+            $"\nCallShot : {callShot}  |  " +
+            $"CueLocking : {cueLock}" +
+            continueFromSavedCode;
+        footerRow.SetRegulationText(msg);
+    }
+
+    public void setFrameLength_Bowlards(int goalFrameNumber)
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::setFrameLength_Bowlards(goalFrameNumber = {goalFrameNumber})");
+#endif
+        
+        headerRow.setFrameLength_Bowlards(goalFrameNumber);
+        int hideFrame = 10 - goalFrameNumber;
+        byte[] frameNumbers = new byte[11];
+        int j = 1;
+        for (int i = 0; i < 10; i++)
+        {
+            frameNumbers[i] = (byte)(i < hideFrame ? 0 : 1);
+        }
+        headerRow.ScoreUpdate_Bowlards(11, -1, frameNumbers);
+
+        foreach (PlayerRow scoreSyncRow in scoreSyncRows)
+        {
+            if (ReferenceEquals(null, scoreSyncRow))
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(footerRow, scoreSyncRow))
+            {
+                continue;
+            }
+            
+            scoreSyncRow.setFrameLength_Bowlards(goalFrameNumber);
+        }
+    }
+
+    /// <summary>
+    /// Bowlards のスコア表示更新
+    /// </summary>
+    public void updateValues_Bowlards(int teamId, int[] frameCounts, int throwInningCount, byte[][] framePoints)
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::updateValues_Bowlards(teamId = {teamId}, frameCounts[] = ({frameCounts[0]}, {frameCounts[1]}), throwInningCount = {throwInningCount})");
+#endif
+        for (int i = 0, j = 0; i < scoreSyncRows.Length; i++)
+        {
+            if (ReferenceEquals(null, scoreSyncRows[i]))
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(footerRow, scoreSyncRows[i]))
+            {
+                continue;
+            }
+
+            if (framePoints.Length <= j)
+            {
+                break;
+            }
+            
+            PlayerRow scoreSyncRow = scoreSyncRows[i];
+            byte[] framePointsByRow = framePoints[j];
+            int frameCount = frameCounts[j];
+            // byte lastFrame = framePointsByRow[framePointsByRow.Length - 1];
+            // int frameCount = (lastFrame & 0xF0) >> 4;
+
+#if DEBUG_EIJIS_SCORE_SCREEN
+            // table._Log($"EIJIS_DEBUG  i = {i}, j = {j}");
+            // // table._Log($"EIJIS_DEBUG  framePoints[{j}][0] = {framePoints[j][0]}");
+            // table._Log($"EIJIS_DEBUG  framePointsByRow.Length = {framePointsByRow.Length}");
+            // // table._Log($"EIJIS_DEBUG  frameCount = {frameCount}");
+#endif
+
+            scoreSyncRow.ScoreUpdate_Bowlards(frameCount, (j == teamId ? throwInningCount : -1), framePointsByRow);
+            j++;
+        }
+    }
+
+    public int[] getScore_Bowlards()
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log("EIJIS_DEBUG BilliardsScoreScreen::getScore_Bowlards()");
+#endif
+        int[] scores = new int[2];
+        for (int i = 0, j = 0; i < scoreSyncRows.Length; i++)
+        {
+            if (ReferenceEquals(null, scoreSyncRows[i]))
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(footerRow, scoreSyncRows[i]))
+            {
+                continue;
+            }
+
+            if (scores.Length <= j)
+            {
+                break;
+            }
+
+            scores[j++] = scoreSyncRows[i].GetBowlardsFinalScore();
+        }
+
+        return scores;
+    }
+    
 #if EIJIS_MNBK_AUTOCOUNTER
     public void clearOffsets()
     {
@@ -1745,4 +1875,62 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         MCB_BattledToggle.gameObject.SetActive(active);
     }
 #endif
+    
+    public void initValues()
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log("EIJIS_DEBUG BilliardsScoreScreen::initValues()");
+#endif
+        switch (gameScoreType)
+        {
+            case GAME_SCORE_TYPE_ROTATION:
+                updateValues_Rotation(
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0);
+                break;
+            case GAME_SCORE_TYPE_BOWLARDS:
+                for (int i = 0; i < scoreSyncRows.Length; i++)
+                {
+                    if (ReferenceEquals(null, scoreSyncRows[i]))
+                    {
+                        continue;
+                    }
+
+                    scoreSyncRows[i].SetEmptyTextOnZero(true);
+                }
+                updateValues_Bowlards(0, new int[] {-1, -1}, 0, new byte[][]{ new byte[11], new byte[11]});
+                break;
+        }
+    }
+    
+    public uint[] EncodeScoreSyncValues()
+    {
+        uint[] encodeScoreSyncValues = new uint[0];
+
+        switch (gameScoreType)
+        {
+            case GAME_SCORE_TYPE_ROTATION:
+                encodeScoreSyncValues = EncodeScoreSyncValues_Rotation();
+                break;
+            case GAME_SCORE_TYPE_BOWLARDS:
+                encodeScoreSyncValues = EncodeScoreSyncValues_Rotation();
+                break;
+        }
+
+        return encodeScoreSyncValues;
+    }
+
+    public void DecodeScoreSyncValues(uint[] scoreSyncValues)
+    {
+        switch (gameScoreType)
+        {
+            case GAME_SCORE_TYPE_ROTATION:
+                DecodeScoreSyncValues_Rotation(scoreSyncValues);
+                break;
+            case GAME_SCORE_TYPE_BOWLARDS:
+                DecodeScoreSyncValues_Rotation(scoreSyncValues);
+                break;
+        }
+    }
 }

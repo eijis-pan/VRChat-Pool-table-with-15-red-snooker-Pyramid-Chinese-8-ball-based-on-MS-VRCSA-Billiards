@@ -10,6 +10,7 @@
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
 // #define EIJIS_CALL_MARKER_TO_GRAY_ON_CUE_TRIGGER_ACTIVATE
+#define EIJIS_CALL_DEFAULT_LOCKING
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define CHEESE_ISSUE_FIX
@@ -18,6 +19,7 @@
 #define EIJIS_EXTERNAL_SCORE_SCREEN
 #define EIJIS_EXTRA_GAMES
 #define EIJIS_ROTATION
+#define EIJIS_BOWLARDS
 
 // #define EIJIS_DEFAULT_MODE_CHANGE
 
@@ -43,6 +45,9 @@
 // #define EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
 // #define EIJIS_DEBUG_UNDO_REDO
 // #define EIJIS_DEBUG_BALL_TOUCHING
+// #define EIJIS_DEBUG_TEAM_ID
+// #define EIJIS_DEBUG_BOWLARDS
+// #define EIJIS_DEBUG_CALLCLEAR
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -69,8 +74,8 @@ using Cheese;
 public class BilliardsModule : UdonSharpBehaviour
 {
     [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
-#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_ROTATION
-    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Rotation)";
+#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Rotation|Bowlards)";
 #else
     [NonSerialized] public readonly string VERSION = "6.0.0";
 #endif
@@ -163,9 +168,9 @@ public class BilliardsModule : UdonSharpBehaviour
     // globals
     [NonSerialized] public AudioSource aud_main;
     [NonSerialized] public UdonBehaviour callbacks;
-#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_ROTATION
-    private Vector3[][] initialPositions = new Vector3[16][];
-    private uint[] initialBallsPocketed = new uint[16];
+#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_ROTATION || EIJIS_BOWLARDS
+    private Vector3[][] initialPositions = new Vector3[20][];
+    private uint[] initialBallsPocketed = new uint[20];
 #else
     private Vector3[][] initialPositions = new Vector3[5][];
     private uint[] initialBallsPocketed = new uint[5];
@@ -231,6 +236,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private readonly int[] break_order_rotation_10ball = { 2, 7, 8, 1, 10, 9, 3, 5, 6, 4 };
     private readonly int[] break_order_rotation_9ball = { 2, 6, 7, 8, 9, 1, 3, 4, 5 };
     private readonly int[] break_order_rotation_6ball = { 2, 5, 6, 3, 7, 4 };
+    private readonly int[] pocketed_ball_upon_pool_order = { 2, 3, 4, 5, 6, 7, 8, 1, 9, 10, 11, 12, 13, 14, 15 };
 #endif
 #if EIJIS_CALLSHOT
     private readonly uint pocket_mask_8ball = 0xFFFEu;
@@ -339,7 +345,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_EXTERNAL_SCORE_SCREEN
     
     [Header("Ext Score Screen")]
-    [SerializeField] public BilliardsScoreScreen scoreScreen;
+    [SerializeField] public BilliardsScoreScreen scoreScreenRotation;
+    [SerializeField] public BilliardsScoreScreen scoreScreenBowlards;
+    private BilliardsScoreScreen[] scoreScreens = new BilliardsScoreScreen[2];
+    private BilliardsScoreScreen scoreScreen;
 #endif 
 
     [Header("Games Using Ext Score Screen")]
@@ -413,12 +422,16 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
     [NonSerialized] public uint ballsPocketedLocal;
 #if EIJIS_CALLSHOT
-    [NonSerialized] public uint targetPocketedLocal;
-    [NonSerialized] public uint otherPocketedLocal;
+    [NonSerialized] public uint targetPocketed;
+    [NonSerialized] public uint otherPocketed;
     [NonSerialized] public uint pointPocketsLocal;
     [NonSerialized] public bool safetyCalledLocal;
     [NonSerialized] public GameObject callSafetyOrb;
+#if EIJIS_CALL_DEFAULT_LOCKING
+    [NonSerialized] public GameObject callClearOrb;
+#else
     [NonSerialized] public GameObject callShotLockOrb;
+#endif
     [NonSerialized] public GameObject skipTurnOrb;
 #endif
 #if EIJIS_PUSHOUT
@@ -442,6 +455,15 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public ushort[] highRunsLocal = new ushort[2];
     [NonSerialized] public ushort[] chainedPointsLocal = new ushort[2];
     [NonSerialized] public byte[] chainedFoulsLocal = new byte[2];
+#endif
+#if EIJIS_BOWLARDS
+    [NonSerialized] public ushort[] framePointsLocal = new ushort[2];
+    [NonSerialized] public ushort[] framePointsLocal2 = new ushort[2];
+    [NonSerialized] public bool practiceModeMenuToggleLocal;
+    [NonSerialized] public uint denyBalls;
+    [NonSerialized] public bool loadUsedLocal;
+    [NonSerialized] public byte undoCountLocal;
+    [NonSerialized] public bool playerChangedLocal;
 #endif
     [NonSerialized] public uint winningTeamLocal;
     [NonSerialized] public int activeCueSkin;
@@ -489,6 +511,11 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public const uint GAMEMODE_ROTATION_10 = 13u; // 1101b 0xD
     [NonSerialized] public const uint GAMEMODE_ROTATION_9 = 14u; // 1110b 0xE
     [NonSerialized] public const uint GAMEMODE_ROTATION_6 = 15u; // 1111b 0xF
+#endif
+#if EIJIS_BOWLARDS
+    [NonSerialized] public const uint GAMEMODE_BOWLARDS_10 = 16u;
+    [NonSerialized] public const uint GAMEMODE_BOWLARDS_5 = 17u;
+    [NonSerialized] public const uint GAMEMODE_BOWLARDS_1 = 18u;
 #endif
 #if EIJIS_CUEBALLSWAP || EIJIS_PUSHOUT || EIJIS_CALLSHOT
     [NonSerialized] public int stateIdLocal;
@@ -544,10 +571,6 @@ public class BilliardsModule : UdonSharpBehaviour
     private bool[] ballhasHitCushion;
     private bool ballBounced;//tracks if any ball has touched the cushion after initial ball collision
     private uint ballsPocketedOrig;
-#if EIJIS_CALLSHOT
-    private uint targetPocketedOrig;
-    private uint otherPocketedOrig;
-#endif
     private int firstHit = 0;
     private int secondHit = 0;
     private int thirdHit = 0;
@@ -619,6 +642,12 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public bool isRotation9Balls = false;
     [NonSerialized] public bool isRotation6Balls = false;
 #endif
+#if EIJIS_BOWLARDS
+    [NonSerialized] public bool isBowlards = false;
+    [NonSerialized] public bool isBowlards10Frame = false;
+    [NonSerialized] public bool isBowlards5Frame = false;
+    [NonSerialized] public bool isBowlards1Frame = false;
+#endif
     [NonSerialized] public bool isPracticeMode = false;
     [NonSerialized] public bool isPlayer = false;
     [NonSerialized] public bool isOrangeTeamFull = false;
@@ -673,25 +702,27 @@ public class BilliardsModule : UdonSharpBehaviour
     private void OnEnable()
     {
 #if EIJIS_EXTERNAL_SCORE_SCREEN
-        if (ReferenceEquals(null, scoreScreen))
+        if (ReferenceEquals(null, scoreScreenRotation))
         {
-            _LogInfo("  ScoreScreen object not set.");
+            _LogInfo("  scoreScreenRotation object not set.");
         }
         else
         {
-            scoreScreen.Init(this);
-            scoreScreen.updateValues_Rotation(
-                totalPointsLocal[0],
-                goalPointsLocal[0],
-                highRunsLocal[0],
-                chainedFoulsLocal[0],
-                totalPointsLocal[1],
-                goalPointsLocal[1],
-                highRunsLocal[1],
-                chainedFoulsLocal[1],
-                string.Empty,
-                inningCountLocal
-            );
+            scoreScreens[0] = scoreScreenRotation;
+        }
+        if (ReferenceEquals(null, scoreScreenBowlards))
+        {
+            _LogInfo("  scoreScreenBowlards object not set.");
+        }
+        else
+        {
+            scoreScreens[1] = scoreScreenBowlards;
+        }
+
+        for (int i = 0; i < scoreScreens.Length; i++)
+        {
+            if (ReferenceEquals(null, scoreScreens[i])) continue;
+            scoreScreens[i].Init(this);
         }
 #endif
 #if EIJIS_TABLE_LABEL
@@ -714,11 +745,6 @@ public class BilliardsModule : UdonSharpBehaviour
             ballRB.maxAngularVelocity = 999;
         }
 
-#if EIJIS_ROTATION
-        goalPointsLocal = new ushort[] {120, 120};
-        Array.Copy(goalPointsLocal, networkingManager.goalPointsSynced, goalPointsLocal.Length);
-        if (!ReferenceEquals(null, scoreScreen)) scoreScreen.gameObject.SetActive(isRotation);
-#endif
 #if EIJIS_GUIDELINE2TOGGLE
         noGuideline2Local = true;
 #endif
@@ -754,9 +780,11 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_DEFAULT_MODE_CHANGE
         tableModelLocal = 1; // 9ft
         networkingManager.tableModelSynced = (byte)tableModelLocal;
-        networkingManager.gameModeSynced = (byte)GAMEMODE_ROTATION_15;
+        // networkingManager.gameModeSynced = (byte)GAMEMODE_ROTATION_15;
+        networkingManager.gameModeSynced = (byte)GAMEMODE_BOWLARDS_10;
         // timerLocal = 60u; // 60sec
-        // networkingManager.timerSynced = (byte)timerLocal;
+        timerLocal = 180u; // 3min
+        networkingManager.timerSynced = (byte)timerLocal;
         requireCallShotLocal = true;
 #endif
 #if EIJIS_GUIDELINE2TOGGLE
@@ -910,7 +938,6 @@ public class BilliardsModule : UdonSharpBehaviour
         if (!ReferenceEquals(null, scoreScreen))
         {
             scoreScreen.Clear();
-            Array.Copy(scoreScreen.EncodeScoreSyncValues_Rotation(), networkingManager.scoreSyncRows, networkingManager.scoreSyncRows.Length);
         }
 #endif
         menuManager._EnableLobbyMenu();
@@ -964,6 +991,13 @@ public class BilliardsModule : UdonSharpBehaviour
     public void _TriggerSemiAutoCallChanged(bool semiAutoCallEnabled)
     {
         networkingManager._OnSemiAutoCallChanged(semiAutoCallEnabled);
+    }
+
+#endif
+#if EIJIS_BOWLARDS
+    public void _TriggerPracticeModeChanged(bool practiceModeEnabled)
+    {
+        networkingManager._OnPracticeModeChanged(practiceModeEnabled);
     }
 
 #endif
@@ -1326,12 +1360,6 @@ public class BilliardsModule : UdonSharpBehaviour
         if (isRotation)
         {
             Array.Copy(goalPointsLocal, networkingManager.goalPointsSynced, goalPointsLocal.Length);
-#if EIJIS_EXTERNAL_SCORE_SCREEN
-            Array.Clear(totalPointsLocal, 0, totalPointsLocal.Length);
-            Array.Clear(highRunsLocal, 0, highRunsLocal.Length);
-            Array.Clear(chainedFoulsLocal, 0, chainedFoulsLocal.Length);
-            UpdateScoreSyncRows();
-#endif
             initializeRack_Rotation();
             initialPositions[GAMEMODE_ROTATION_15][0] = initialPositions[0][0];
             initialPositions[GAMEMODE_ROTATION_10][0] = initialPositions[0][0];
@@ -1405,6 +1433,16 @@ public class BilliardsModule : UdonSharpBehaviour
                     }
                     break;
 #endif
+#if EIJIS_BOWLARDS
+                case GAMEMODE_BOWLARDS_10:
+                case GAMEMODE_BOWLARDS_5:
+                case GAMEMODE_BOWLARDS_1:
+                    // Bowlards
+                    int frameNumberBallId = pocketed_ball_upon_pool_order[0];
+                    initializeRack_Bowlards(frameNumberBallId);
+                    randomPositions = randomizeBallPositions_Bowlards(frameNumberBallId);
+                    break;
+#endif
             }
         }
 
@@ -1445,6 +1483,9 @@ public class BilliardsModule : UdonSharpBehaviour
         int newslot = networkingManager._OnJoinTeam(teamId);
         if (newslot != -1)
         {
+#if EIJIS_BOWLARDS
+            playerChangedLocal = true;
+#endif
             //for responsive menu prediction. These values will be overwritten in deserialization
             isPlayer = true;
             VRCPlayerApi lp = Networking.LocalPlayer;
@@ -1580,6 +1621,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_TABLE_LABEL
         Debug.Log("[BilliardsModule" + logLabel + "] latest game state is " + networkingManager._EncodeGameState());
 #endif
+#if EIJIS_DEBUG_TEAM_ID
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() teamIdLocal = {teamIdLocal:X2}, teamIdSynced = {networkingManager.teamIdSynced:X2}, colorTurnLocal={colorTurnLocal}, colorTurnSynced={networkingManager.colorTurnSynced}");
+#endif
 #if EIJIS_DEBUG_FOUL_STATE
         _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() foulStateLocal = {foulStateLocal}, foulStateSynced = {networkingManager.foulStateSynced}");
 #endif
@@ -1590,10 +1634,53 @@ public class BilliardsModule : UdonSharpBehaviour
         _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() inningCountLocal = {inningCountLocal}, inningCountSynced = {networkingManager.inningCountSynced}");
 #endif
 #if EIJIS_DEBUG_SCORE_SCREEN
-        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() goalPointsLocal = {goalPointsLocal[0]}, {goalPointsLocal[1]}, goalPointsSynced = {networkingManager.goalPointsSynced[0]}, {networkingManager.goalPointsSynced[1]}");
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() gameStateLocal = {gameStateLocal}, gameStateSynced = {networkingManager.gameStateSynced}");
 #endif
-#if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_ROTATION
+#if EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() INNING -> inningCountLocal = {inningCountLocal}, inningCountSynced = {networkingManager.inningCountSynced}");
+        // _LogInfo($"                                                        FRAME_COUNT -> fbScoresLocal = {fbScoresLocal[0]}, {fbScoresLocal[1]}, fourBallScoresSynced = {networkingManager.fourBallScoresSynced[0]}, {networkingManager.fourBallScoresSynced[1]}");
+        // _LogInfo($"                                                        goalPointsLocal = {goalPointsLocal[0]}, {goalPointsLocal[1]}, goalPointsSynced = {networkingManager.goalPointsSynced[0]}, {networkingManager.goalPointsSynced[1]}");
+        // _LogInfo($"                                                        chainedFoulsLocal = {chainedFoulsLocal[0]}, {chainedFoulsLocal[1]}, chainedFoulsSynced = {networkingManager.chainedFoulsSynced[0]}, {networkingManager.chainedFoulsSynced[1]}");
+        // _LogInfo($"                                                        playerChangedLocal = {playerChangedLocal}, playerChangedSynced = {networkingManager.playerChangedSynced}");
+#endif
+#if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_ROTATION && EIJIS_BOWLARDS
         updateInfoText();
+#endif
+#if EIJIS_BOWLARDS
+        if (isBowlards && gameLive)
+        {
+            bool canChoiceFoot = false;
+            denyBalls = 0x0u;
+            if (!networkingManager.colorTurnSynced && (networkingManager.foulStateSynced == 1 || networkingManager.foulStateSynced == 2))
+            {
+                bool allowBallFound = false;
+                uint ball_bit = 0x2u;
+                uint ballsInKitchen = 0x0u;
+                for (int k = 0; k < break_order_10ball.Length; k++)
+                {
+                    int i = k + 1;
+                    if ((ballsPocketedLocal & ball_bit) == 0x0u)
+                    {
+                        if (ballsP[i].x <= -(k_TABLE_WIDTH / 2))
+                        {
+                            ballsInKitchen |= 0x1u << i;
+                        }
+                        else
+                        {
+                            allowBallFound = true;
+                        }
+                    }
+                    ball_bit <<= 1;
+                }
+                denyBalls = ballsInKitchen;
+                canChoiceFoot = !allowBallFound;
+            }
+            graphicsManager._SetBallsDenyMark(denyBalls);
+            networkingManager.nextBallRepositionStateSynced = (byte)(canChoiceFoot ? 1 : 0);
+#if EIJIS_DEBUG_BOWLARDS
+            // _LogInfo($"EIJIS_DEBUG  nextBallRepositionStateSynced = 0x{networkingManager.nextBallRepositionStateSynced:X02}, nextBallRepositionStateLocal = 0x{nextBallRepositionStateLocal:X02}");
+#endif
+        }
 #endif
 
         lastActionTime = Time.time;
@@ -1622,12 +1709,34 @@ public class BilliardsModule : UdonSharpBehaviour
             , networkingManager.semiAutoCallSynced
 #endif
 #endif
+#if EIJIS_BOWLARDS
+            , networkingManager.practiceModeMenuToggleSynced
+#endif
         );
+#if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_BOWLARDS
+        loadUsedLocal = networkingManager.loadUsedSynced;
+        undoCountLocal = networkingManager.undoCountSynced;
+        playerChangedLocal = networkingManager.playerChangedSynced;
+        if (!ReferenceEquals(null, scoreScreen) && isBowlards)
+        {
+            scoreScreen.updateRegulationText(
+                (string)tableModels[tableModelLocal].GetProgramVariable("TABLENAME"),
+                timerLocal, requireCallShotLocal, noGuidelineLocal, noLockingLocal, practiceModeMenuToggleLocal,
+                undoCountLocal, loadUsedLocal, playerChangedLocal
+                );
+        }
+#endif
 
         // propagate valid players second
         onRemotePlayersChanged(networkingManager.playerIDsSynced);
 #if EIJIS_CUEBALLSWAP || EIJIS_PUSHOUT
         bool stateIdChanged = (networkingManager.stateIdSynced != stateIdLocal);
+#endif
+#if EIJIS_BOWLARDS
+        bool inningChanged = inningCountLocal != networkingManager.inningCountSynced;
+        if (isBowlards && gameLive && inningChanged && teamIdLocal == networkingManager.teamIdSynced) aud_main.PlayOneShot(snd_NewTurn, 1.0f); 
+        Array.Copy(networkingManager.framePointsSynced, framePointsLocal, framePointsLocal.Length);
+        Array.Copy(networkingManager.framePointsSynced2, framePointsLocal2, framePointsLocal2.Length);
 #endif
 #if EIJIS_ROTATION
         Array.Copy(networkingManager.totalPointsSynced, totalPointsLocal, totalPointsLocal.Length);
@@ -1645,8 +1754,7 @@ public class BilliardsModule : UdonSharpBehaviour
                 if (!ReferenceEquals(null, scoreScreen))
                 {
                     scoreScreen.Clear();
-                    // scoreScreen.updateGoalPoint_Rotation(goalPointsLocal[0], goalPointsLocal[1]);
-                    scoreScreen.updateGoalPoint_Rotation(networkingManager.goalPointsSynced[0], networkingManager.goalPointsSynced[1]);
+                    if (isRotation) scoreScreen.updateGoalPoint_Rotation(networkingManager.goalPointsSynced[0], networkingManager.goalPointsSynced[1]);
                 }
                 if (0 < networkingManager.stateIdSynced)
                 {
@@ -1666,8 +1774,50 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             if (!ReferenceEquals(null, scoreScreen))
             {
-                scoreScreen.DecodeScoreSyncValues_Rotation(networkingManager.scoreSyncRows);
-                scoreScreen.updateInningCount_Rotation(inningCountLocal);
+                if (isRotation)
+                {
+                    scoreScreen.updateValues_Rotation(
+                        totalPointsLocal[0], 
+                        goalPointsLocal[0],
+                        highRunsLocal[0],
+                        chainedFoulsLocal[0], 
+                        totalPointsLocal[1],
+                        goalPointsLocal[1],
+                        highRunsLocal[1],
+                        chainedFoulsLocal[1],
+                        inningCountLocal
+                    );
+                }
+                else if (isBowlards)
+                {
+                    int frameLength = isBowlards1Frame ? 1 : (isBowlards5Frame ? 5 : 10);
+                    if (gameLive || networkingManager.gameStateSynced == 2 || networkingManager.gameStateSynced == 4)
+                    {
+                        byte[][] framePoints = generateBowlardsScoreByteArrays(frameLength);
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+                        for (int t = 0; t < 2; t++)
+                        {
+                            _LogInfo(
+                                $"{framePoints[t][0]:X2} "+
+                                $"{framePoints[t][1]:X2} "+
+                                $"{framePoints[t][2]:X2} "+
+                                $"{framePoints[t][3]:X2} "+
+                                $"{framePoints[t][4]:X2} "+
+                                $"{framePoints[t][5]:X2} "+
+                                $"{framePoints[t][6]:X2} "+
+                                $"{framePoints[t][7]:X2} "+
+                                $"{framePoints[t][8]:X2} "+
+                                $"{framePoints[t][9]:X2} "+
+                                $"{framePoints[t][10]:X}"
+                            );
+                        }
+#endif
+                        int[] frameCounts = new int[] {networkingManager.fourBallScoresSynced[0] + (10 - frameLength), networkingManager.fourBallScoresSynced[1] + (10 - frameLength)};
+                        int throwInningCount = inningCountLocal;
+                        int teamId = networkingManager.teamIdSynced &= 0x0F;
+                        scoreScreen.updateValues_Bowlards(teamId, frameCounts, throwInningCount, framePoints);
+                    }
+                }
             }
         }
 #endif
@@ -1685,11 +1835,7 @@ public class BilliardsModule : UdonSharpBehaviour
         onRemoteTeamIdChanged(networkingManager.teamIdSynced);
         onRemoteFourBallCueBallChanged(networkingManager.fourBallCueBallSynced);
         onRemoteColorTurnChanged(networkingManager.colorTurnSynced);
-#if EIJIS_CALLSHOT
-        onRemoteBallsPocketedChanged(networkingManager.ballsPocketedSynced, networkingManager.targetPocketedSynced, networkingManager.otherPocketedSynced);
-#else
         onRemoteBallsPocketedChanged(networkingManager.ballsPocketedSynced);
-#endif
         onRemoteFoulStateChanged(networkingManager.foulStateSynced);
         onRemoteFourBallScoresUpdated(networkingManager.fourBallScoresSynced);
 #if EIJIS_ROTATION
@@ -1769,6 +1915,9 @@ public class BilliardsModule : UdonSharpBehaviour
         , bool semiAutoCallSynced
 #endif
 #endif
+#if EIJIS_BOWLARDS
+        , bool practiceModeMenuToggleSynced
+#endif
     )
 #else
     private void onRemoteGameSettingsUpdated(uint gameModeSynced, uint timerSynced, bool teamsSynced, bool noGuidelineSynced, bool noLockingSynced)
@@ -1793,6 +1942,9 @@ public class BilliardsModule : UdonSharpBehaviour
             && semiAutoCallLocal == semiAutoCallSynced
 #endif
 #endif
+#if EIJIS_BOWLARDS
+            && practiceModeMenuToggleLocal == practiceModeMenuToggleSynced
+#endif
         )
         {
             return;
@@ -1800,7 +1952,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
 #if EIJIS_GUIDELINE2TOGGLE && EIJIS_CALLSHOT && EIJIS_SEMIAUTOCALL && EIJIS_10BALL
         _LogInfo($"onRemoteGameSettingsUpdated gameMode={gameModeSynced} timer={timerSynced} teams={teamsSynced} guideline={!noGuidelineSynced} guideline2={!noGuideline2Synced} locking={!noLockingSynced}");
-        _LogInfo($"                                                      wpa10BallRule={wpa10BallRuleSynced} callShot={requireCallShotSynced} callPass={callPassOptionSynced} semiAutCcall={semiAutoCallSynced}");
+        _LogInfo($"                            wpa10BallRule={wpa10BallRuleSynced} callShot={requireCallShotSynced} callPass={callPassOptionSynced} semiAutCcall={semiAutoCallSynced}");
 #else
         _LogInfo($"onRemoteGameSettingsUpdated gameMode={gameModeSynced} timer={timerSynced} teams={teamsSynced} guideline={!noGuidelineSynced} locking={!noLockingSynced}");
 #endif
@@ -1849,25 +2001,61 @@ public class BilliardsModule : UdonSharpBehaviour
             isRotation9Balls = gameModeLocal == GAMEMODE_ROTATION_9;
             isRotation6Balls = gameModeLocal == GAMEMODE_ROTATION_6;
             isRotation = isRotation15Balls || isRotation10Balls || isRotation9Balls || isRotation6Balls;
+            if (isRotation)
+            {
+                goalPointsLocal = new ushort[] {120, 120};
+                Array.Copy(goalPointsLocal, networkingManager.goalPointsSynced, goalPointsLocal.Length);
+                menuManager._RefreshGoalPoint();
+            }
 #endif
-#if EIJIS_10BALL && EIJIS_ROTATION
-            pocketMask = is10Ball || isRotation10Balls ? pocket_mask_10ball
+#if EIJIS_BOWLARDS
+            isBowlards10Frame = gameModeLocal == GAMEMODE_BOWLARDS_10;
+            isBowlards5Frame = gameModeLocal == GAMEMODE_BOWLARDS_5;
+            isBowlards1Frame = gameModeLocal == GAMEMODE_BOWLARDS_1;
+            isBowlards = isBowlards10Frame || isBowlards5Frame || isBowlards1Frame;
+#endif
+#if EIJIS_10BALL && EIJIS_ROTATION && EIJIS_BOWLARDS
+            pocketMask = is10Ball || isRotation10Balls || isBowlards ? pocket_mask_10ball
                 : (is9Ball || isRotation9Balls ? pocket_mask_9ball
                     : (isRotation6Balls ? rotation_pocket_masks[GAMEMODE_ROTATION_6 & GAME_MODE_ROTATION_MASK]
                         : pocket_mask_8ball));
             ballsLengthByPocketGame = (is9Ball || isRotation9Balls ? break_order_9ball.Length
-                : (is10Ball || isRotation10Balls ? break_order_10ball.Length
+                : (is10Ball || isRotation10Balls || isBowlards ? break_order_10ball.Length
                     : (isRotation6Balls ? break_order_rotation_6ball.Length : break_order_8ball.Length)));
 #endif
 #if EIJIS_EXTERNAL_SCORE_SCREEN
             
+            string gameName = String.Empty;
+            int gameNameDisplayNumber = 0;
+            if (isRotation)
+            {
+                scoreScreen = scoreScreenRotation;
+                gameName = "Rotation";
+                gameNameDisplayNumber = ballsLengthByPocketGame;
+            }
+            else if (isBowlards)
+            {
+                int frameLength = isBowlards1Frame ? 1 : (isBowlards5Frame ? 5 : 10);
+
+                scoreScreen = scoreScreenBowlards;
+                gameName = "Bowlards";
+                gameNameDisplayNumber = frameLength;
+                
+                scoreScreen.setFrameLength_Bowlards(frameLength);
+            }
+            else
+            {
+                scoreScreen = null;
+            }
+
             if (!ReferenceEquals(null, scoreScreen))
             {
-                scoreScreen.gameObject.SetActive(isRotation);
-                if (isRotation)
-                {
-                    scoreScreen.UpdateGameNameWithNumber("Rotation", ballsLengthByPocketGame);
-                }
+                scoreScreen.UpdateGameNameWithNumber(gameName, gameNameDisplayNumber);
+            }
+            for (int i = 0; i < scoreScreens.Length; i++)
+            {
+                if (ReferenceEquals(null, scoreScreens[i])) continue;
+                scoreScreens[i].gameObject.SetActive(scoreScreen == scoreScreens[i]);
             }
 #endif
 
@@ -1941,6 +2129,19 @@ public class BilliardsModule : UdonSharpBehaviour
         
 #endif
 #endif
+#if EIJIS_BOWLARDS
+        if (practiceModeMenuToggleLocal != practiceModeMenuToggleSynced)
+        {
+            practiceModeMenuToggleLocal = practiceModeMenuToggleSynced;
+            refreshToggles = true;
+
+            if (isBowlards)
+            {
+                isPracticeMode = practiceModeMenuToggleLocal;
+            }
+        }
+        
+#endif
         if (refreshToggles)
         {
             menuManager._RefreshToggleSettings();
@@ -1958,7 +2159,24 @@ public class BilliardsModule : UdonSharpBehaviour
         Array.Copy(playerIDsSynced, playerIDsLocal, playerIDsLocal.Length);
 
         if (networkingManager.gameStateSynced != 3) // don't set practice mode to true after the players are kicked when the game ends
+#if EIJIS_BOWLARDS
+        {
+            isPracticeMode = playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1 && (!isBowlards || (isBowlards && practiceModeMenuToggleLocal));
+
+            if (networkingManager.gameStateSynced == 2 || networkingManager.gameStateSynced == 4)
+            {
+                if (!teamsLocal && (playerIDsCached[1] == -1 && playerIDsCached[1] != playerIDsLocal[1]))
+                {
+                    clearBowlardsScoreVariables(1);
+                }
+            }
+        }
+#if EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG  practiceModeMenuToggleLocal = {practiceModeMenuToggleLocal}, isPracticeMode = {isPracticeMode}");
+#endif
+#else
             isPracticeMode = playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1;
+#endif
 
         string[] playerDetails = new string[4];
         for (int i = 0; i < 4; i++)
@@ -2041,6 +2259,13 @@ public class BilliardsModule : UdonSharpBehaviour
         menuManager._RefreshLobby();
         cueControllers[0].resetScale();
         cueControllers[1].resetScale();
+#if EIJIS_EXTERNAL_SCORE_SCREEN
+        if (!ReferenceEquals(null, scoreScreen))
+        {
+            scoreScreen.initValues();
+            scoreScreen.clearInfoText();
+        }
+#endif
 
         if (callbacks != null) callbacks.SendCustomEvent("_OnLobbyOpened");
     }
@@ -2082,27 +2307,40 @@ public class BilliardsModule : UdonSharpBehaviour
         Array.Clear(perfStart, 0, PERF_MAX);
         Array.Clear(perfTimings, 0, PERF_MAX);
 
+#if EIJIS_BOWLARDS
+        isPracticeMode = playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1 && (!isBowlards || (isBowlards && practiceModeMenuToggleLocal));
+        networkingManager.practiceModeMenuToggleSynced = isPracticeMode;
+        practiceModeMenuToggleLocal = !isPracticeMode;
+#if EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG  stateIdLocal = {stateIdLocal}, stateIdSynced = {networkingManager.stateIdSynced}");
+        // _LogInfo($"EIJIS_DEBUG  practiceModeMenuToggleLocal = {practiceModeMenuToggleLocal}, isPracticeMode = {isPracticeMode}");
+#endif
+#else
         isPracticeMode = playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1;
+#endif
 
         menuManager._RefreshLobby();
 #if EIJIS_ROTATION
         if (isRotation)
         {
             graphicsManager._SetUSColors(true);
-            if (!ReferenceEquals(null, scoreScreen)) scoreScreen.clearInfoText_Rotation();
         }
 #endif
         graphicsManager._OnGameStarted();
         desktopManager._OnGameStarted();
         applyCueAccess();
+#if EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (stateIdLocal <= 3) practiceManager._Clear();
+#else 
         practiceManager._Clear();
+#endif
         repositionManager._OnGameStarted();
         for (int i = 0; i < cueControllers.Length; i++) cueControllers[i]._RefreshRenderer();
 
         Array.Clear(fbScoresLocal, 0, 2);
         auto_pocketblockers.SetActive(isCarom);
-#if EIJIS_PYRAMID || EIJIS_10BALL || EIJIS_ROTATION
-        marker9ball.SetActive(is9Ball || is10Ball || isPyramid || isRotation);
+#if EIJIS_PYRAMID || EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        marker9ball.SetActive(is9Ball || is10Ball || isPyramid || isRotation || isBowlards);
 #else
         marker9ball.SetActive(is9Ball);
 #endif
@@ -2125,14 +2363,16 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #endif
 #endif
+#if EIJIS_DEBUG_BOWLARDS
+        denyBalls = 0x0u;
+        graphicsManager._SetBallsDenyMark(denyBalls);
+#endif
 #if EIJIS_PUSHOUT
         pushOutStateLocal = PUSHOUT_BEFORE_BREAK;
         graphicsManager._UpdatePushOut(pushOutStateLocal);
 #endif
 #if EIJIS_CALLSHOT
         graphicsManager._UpdateCallSafety(safetyCalledLocal);
-        targetPocketedLocal = 0x0u;
-        otherPocketedLocal = 0x0u;
 #endif
 #if EIJIS_CALLSHOT && EIJIS_PUSHOUT
         cantSkipNextTurnOnCallShotOption = false;
@@ -2267,7 +2507,11 @@ public class BilliardsModule : UdonSharpBehaviour
         disablePlayComponents();
 #if EIJIS_CALLSHOT
         if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+        if (!ReferenceEquals(null, callClearOrb)) callClearOrb.SetActive(false);
+#else
         if (!ReferenceEquals(null, callShotLockOrb)) callShotLockOrb.SetActive(false);
+#endif
         safetyCalledLocal = false;
 #endif
 #if EIJIS_ROTATION
@@ -2291,11 +2535,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     }
 
-#if EIJIS_CALLSHOT
-    private void onRemoteBallsPocketedChanged(uint ballsPocketedSynced, uint targetPocketedSynced, uint otherPocketedSynced)
-#else
     private void onRemoteBallsPocketedChanged(uint ballsPocketedSynced)
-#endif
     {
         if (!gameLive) return;
 
@@ -2303,10 +2543,6 @@ public class BilliardsModule : UdonSharpBehaviour
         if (ballsPocketedLocal != ballsPocketedSynced) _LogInfo($"onRemoteBallsPocketedChanged ballsPocketed={ballsPocketedSynced:X}");
 
         ballsPocketedLocal = ballsPocketedSynced;
-#if EIJIS_CALLSHOT
-        targetPocketedLocal = targetPocketedSynced;
-        otherPocketedLocal = otherPocketedSynced;
-#endif
 
         graphicsManager._UpdateScorecard();
         graphicsManager._RackBalls();
@@ -2323,8 +2559,8 @@ public class BilliardsModule : UdonSharpBehaviour
             _LogInfo($"onRemoteFourBallScoresUpdated team1={fbScoresSynced[0]} team2={fbScoresSynced[1]}");
             //don't escape, as this will always be true for the sender, and they may need to run the rest.
         }
-#if EIJIS_SNOOKER15REDS
-        if (!isSnooker && !isCarom && !isPyramid) { return; }   //cheese fix
+#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_BOWLARDS
+        if (!isSnooker && !isCarom && !isPyramid && !isBowlards) { return; }   //cheese fix
 #else
         if (!isSnooker6Red && !isCarom) { return; }
 #endif
@@ -2335,11 +2571,19 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void onRemoteTeamIdChanged(uint teamIdSynced)
     {
+#if EIJIS_DEBUG_TEAM_ID
+        _LogInfo($"EIJIS BilliardsModule::onRemoteTeamIdChanged(teamIdSynced = 0x{teamIdSynced:X}) teamIdLocal = 0x{teamIdLocal:X}");
+#endif
         if (!gameLive) return;
 
         if (teamIdLocal != teamIdSynced)
         {
+#if EIJIS_BOWLARDS
+            networkingManager.teamIdSynced &= 0x0F;
+            teamIdLocal = networkingManager.teamIdSynced;
+#else
             teamIdLocal = teamIdSynced;
+#endif
             aud_main.PlayOneShot(snd_NewTurn, 1.0f);
             _LogInfo($"onRemoteTeamIdChanged newTeam={teamIdSynced}");
         }
@@ -2447,8 +2691,16 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             isReposition = true;
 
-#if EIJIS_ROTATION
+#if EIJIS_ROTATION || EIJIS_BOWLARDS
             uint foulState = foulStateLocal;
+#endif
+#if EIJIS_BOWLARDS
+            if (isBowlards)
+            {
+                foulState = 1;
+            }
+#endif
+#if EIJIS_ROTATION
             if (isRotation && (foulStateLocal == 1 || foulStateLocal == 2))
             {
                 if (chainedFoulsLocal[teamIdLocal ^ 0x1u] < 3)
@@ -2553,7 +2805,7 @@ public class BilliardsModule : UdonSharpBehaviour
         _LogInfo($"TKCH EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION onRemoteTurnBegin() cueBallFixed = {cueBallFixed}");
 #endif
 #endif
-        if ((is8Ball || is10Ball || isRotation) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
+        if ((is8Ball || is10Ball || isRotation || isBowlards) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
         {
             graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
         }
@@ -2561,7 +2813,11 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             graphicsManager._DisablePointPocketMarker();
             if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+            if (!ReferenceEquals(null, callClearOrb)) callClearOrb.SetActive(false);
+#else
             if (!ReferenceEquals(null, callShotLockOrb)) callShotLockOrb.SetActive(false);
+#endif
             if (!ReferenceEquals(null, skipTurnOrb)) skipTurnOrb.SetActive(false);
         }
 #endif
@@ -2604,6 +2860,14 @@ public class BilliardsModule : UdonSharpBehaviour
             return;
         }
 
+#if EIJIS_BOWLARDS
+        bool isOnBreakShot = colorTurnLocal;
+        if (!isOnBreakShot && 0 < denyBalls)
+        {
+            currentPhysicsManager.SetProgramVariable("cueBallKichenLineOverCheck", true);
+        }
+
+#endif
         isLocalSimulationRunning = true;
         firstHit = 0;
         secondHit = 0;
@@ -2618,8 +2882,8 @@ public class BilliardsModule : UdonSharpBehaviour
         ballhasHitCushion = new bool[MAX_BALLS];
         ballsPocketedOrig = ballsPocketedLocal;
 #if EIJIS_CALLSHOT
-        targetPocketedOrig = targetPocketedLocal;
-        otherPocketedOrig = otherPocketedLocal;
+        targetPocketed = 0x0u;
+        otherPocketed = 0x0u;
 #endif
         jumpShotFoul = false;
         fallOffFoul = false;
@@ -2749,8 +3013,8 @@ public class BilliardsModule : UdonSharpBehaviour
         }
 
 #endif
-#if EIJIS_10BALL || EIJIS_ROTATION
-        if ((is8Ball || is10Ball || isRotation) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
+#if EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        if ((is8Ball || is10Ball || isRotation || isBowlards) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
 #else
         if (is8Ball && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
 #endif
@@ -2825,7 +3089,7 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         
 #if EIJIS_EXTERNAL_SCORE_SCREEN
-        if (!ReferenceEquals(null, scoreScreen)) scoreScreen.updateGoalPoint_Rotation(goalPointsLocal[0], goalPointsLocal[1]);
+        if (!ReferenceEquals(null, scoreScreen)) if (isRotation) scoreScreen.updateGoalPoint_Rotation(goalPointsLocal[0], goalPointsLocal[1]);
 #endif
     }
 #endif
@@ -2980,6 +3244,29 @@ public class BilliardsModule : UdonSharpBehaviour
                 }
                 break;
 #endif
+#if EIJIS_BOWLARDS
+            case GAMEMODE_BOWLARDS_10:
+            case GAMEMODE_BOWLARDS_5:
+            case GAMEMODE_BOWLARDS_1:
+                if (firstHit == 0)
+                {
+                    firstHit = dstId;
+                    if (0 < denyBalls)
+                    {
+                        if ((denyBalls & (0x1u << firstHit)) != 0x0u)
+                        {
+                            pointPocketsLocal = 0;
+                            calledBallsLocal = 0;
+                            markerCalledBall.SetActive(false);
+                        }
+                        else
+                        {
+                            graphicsManager._SetBallsDenyMark(0);
+                        }
+                    }
+                }
+                break;
+#endif
         }
     }
 
@@ -2996,10 +3283,17 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_10BALL
 #if EIJIS_SNOOKER15REDS
 #if EIJIS_ROTATION
+#if EIJIS_BOWLARDS
+        int count_extent = isRotation6Balls ? 7
+            : (is9Ball || isRotation9Balls ? 10 
+                : (is10Ball || isRotation10Balls || isBowlards ? 11 
+                    : (isSnooker15Red ? 31 : 16)));
+#else
         int count_extent = isRotation6Balls ? 7
             : (is9Ball || isRotation9Balls ? 10 
                 : (is10Ball || isRotation10Balls ? 11 
                     : (isSnooker15Red ? 31 : 16)));
+#endif
 #else
         int count_extent = is9Ball ? 10 : (is10Ball ? 11 : (isSnooker15Red ? 31 : 16));
 #endif
@@ -3125,13 +3419,13 @@ public class BilliardsModule : UdonSharpBehaviour
             if ((!requireCallShotLocal || callSuccess) &&
                 (((0x1U << id) & ((bmask) | (isTableOpenLocal ? 0xFFFCU : 0x0000U) | ((bmask & ballsPocketedLocal) == bmask ? 0x2U : 0x0U))) > 0))
             {
-                targetPocketedLocal |= 1U << id;
+                targetPocketed |= 1U << id;
             }
             else
             {
                 if (0 != id)
                 {
-                    otherPocketedLocal |= 1U << id;
+                    otherPocketed |= 1U << id;
                 }
             }
 #endif
@@ -3146,18 +3440,37 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
             if (is9Ball || !requireCallShotLocal || callSuccess)
             {
-                targetPocketedLocal |= 1U << id;
+                targetPocketed |= 1U << id;
                 calledBallsLocal = 0;
             }
             else
             {
                 if (0 != id)
                 {
-                    otherPocketedLocal |= 1U << id;
+                    otherPocketed |= 1U << id;
                 }
             }
 #endif
         }
+#if EIJIS_BOWLARDS
+        else if (isBowlards)
+        {
+#if EIJIS_CALLSHOT
+            if (!requireCallShotLocal || callSuccess)
+            {
+                targetPocketed |= 1U << id;
+                calledBallsLocal = 0;
+            }
+            else
+            {
+                if (0 != id)
+                {
+                    otherPocketed |= 1U << id;
+                }
+            }
+#endif
+        }
+#endif
         foulPocket |= fallOffFoul;
         if (foulPocket)
         {
@@ -3186,6 +3499,17 @@ public class BilliardsModule : UdonSharpBehaviour
         ballsW[id] = Vector3.zero;
     }
 
+#if EIJIS_BOWLARDS
+    public void _TriggerCueBallKichenLineOver()
+    {
+#if EIJIS_DEBUG_CUEBALL_OVER_KICHENLINE
+        _LogInfo("EIJIS BilliardsModule::_TriggerCueBallKichenLineOver()");
+#endif
+        denyBalls = 0;
+        graphicsManager._SetBallsDenyMark(denyBalls);
+    }
+
+#endif
     public void _TriggerJumpShotFoul() { jumpShotFoul = true; }
     public void _TriggerBallFallOffFoul() { fallOffFoul = true; }
 
@@ -3270,6 +3594,10 @@ public class BilliardsModule : UdonSharpBehaviour
             bool repositionOnFoul = true;
             bool winnerBreak = true;
             bool reBreakAllowed = false;
+            bool matchWinCondition = false;
+#endif
+#if EIJIS_BOWLARDS
+            bool matchLossCondition = false;
 #endif
 #if EIJIS_PUSHOUT
             if (pushOut && isScratch)
@@ -3319,10 +3647,6 @@ public class BilliardsModule : UdonSharpBehaviour
                     is8Sink = false;
 
                     ballsPocketedLocal = ballsPocketedLocal & ~(0x2U);
-#if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(0x2U);
-                    otherPocketedLocal = otherPocketedLocal & ~(0x2U);
-#endif
                     ballsP[1] = Vector3.zero;
                     moveBallInDirUntilNotTouching(1, Vector3.right * k_BALL_RADIUS * .051f);
                 }
@@ -3365,10 +3689,6 @@ public class BilliardsModule : UdonSharpBehaviour
                     winCondition = false;           //赢不了一点
                     deferLossCondition = false;     //也别想输
                     ballsPocketedLocal = ballsPocketedLocal & ~(0x2U);
-#if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(0x2U);
-                    otherPocketedLocal = otherPocketedLocal & ~(0x2U);
-#endif
                     ballsP[1] = initialPositions[1][1]; //初始点
                     moveBallInDirUntilNotTouching(1, Vector3.right * .051f);
                 }
@@ -3384,13 +3704,13 @@ public class BilliardsModule : UdonSharpBehaviour
                     if (requireCallShotLocal)
                     {
 #if EIJIS_DEBUG_CALLSHOT_BALL
-                        _LogInfo($"  requireCallShot targetPocketedLocal = {targetPocketedLocal:X4}, targetPocketedOrig = {targetPocketedOrig:x4}");
-                        _LogInfo($"           masked targetPocketedLocal = {(targetPocketedLocal & bmask):X4}, targetPocketedOrig = {(targetPocketedOrig & bmask):x4}");
-                        _LogInfo($"                  otherPocketedLocal = {otherPocketedLocal:X4}, otherPocketedLocal = {otherPocketedLocal:x4}");
-                        _LogInfo($"           masked otherPocketedLocal = {(otherPocketedLocal & pocketMask):X4}, otherPocketedLocal = {(otherPocketedOrig & pocketMask):x4}");
+                        _LogInfo($"  requireCallShot targetPocketed = {targetPocketed:X4}");
+                        _LogInfo($"           masked targetPocketed = {(targetPocketed & bmask):X4}");
+                        _LogInfo($"                  otherPocketed = {otherPocketed:X4}, otherPocketed = {otherPocketed:x4}");
+                        _LogInfo($"           masked otherPocketed = {(otherPocketed & pocketMask):X4}");
 #endif
-                        isObjectiveSink = (targetPocketedLocal & bmask) > (targetPocketedOrig & bmask);
-                        isOpponentSink = isOpponentSink | (otherPocketedLocal & pocketMask) > (otherPocketedOrig & pocketMask);
+                        isObjectiveSink = (targetPocketed & bmask) > 0;
+                        isOpponentSink = isOpponentSink | (otherPocketed & pocketMask) > 0;
 #if EIJIS_DEBUG_CALLSHOT_BALL
                         _LogInfo($"  isObjectiveSink = {isObjectiveSink}, isOpponentSink = {isOpponentSink}");
 #endif
@@ -3426,7 +3746,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     uint sink_orange = 0;
                     uint sink_blue = 0;
 #if EIJIS_CALLSHOT
-                    uint pmask = (requireCallShotLocal ? (targetPocketedLocal & ~targetPocketedOrig) : (ballsPocketedLocal ^ ballsPocketedOrig)) >> 2;
+                    uint pmask = (requireCallShotLocal ? targetPocketed : (ballsPocketedLocal ^ ballsPocketedOrig)) >> 2;
 #else
                     uint pmask = (ballsPocketedLocal ^ ballsPocketedOrig) >> 2; // only check balls that were pocketed this turn
 #endif
@@ -3481,22 +3801,22 @@ public class BilliardsModule : UdonSharpBehaviour
 
                 // Rule #2: Pocketing cueball, is a foul
 #if EIJIS_CALLSHOT
-                isObjectiveSink = (targetPocketedLocal & pocketMask) > (targetPocketedOrig & pocketMask);
+                isObjectiveSink = (targetPocketed & pocketMask) > 0;
 #else
                 isObjectiveSink = (ballsPocketedLocal & 0x3FEu) > (ballsPocketedOrig & 0x3FEu);
 #endif
 #if EIJIS_DEBUG_CALLSHOT_BALL
                 if (requireCallShotLocal)
                 {
-                    _LogInfo($"  requireCallShot targetPocketedLocal = {targetPocketedLocal:X4}, targetPocketedOrig = {targetPocketedOrig:x4}");
-                    _LogInfo($"           masked targetPocketedLocal = {(targetPocketedLocal & pocketMask):X4}, targetPocketedOrig = {(targetPocketedOrig & pocketMask):x4}");
-                    _LogInfo($"                  otherPocketedLocal = {otherPocketedLocal:X4}, otherPocketedLocal = {otherPocketedLocal:x4}");
-                    _LogInfo($"           masked otherPocketedLocal = {(otherPocketedLocal & pocketMask):X4}, otherPocketedLocal = {(otherPocketedOrig & pocketMask):x4}");
+                    _LogInfo($"  requireCallShot targetPocketed = {targetPocketed:X4}");
+                    _LogInfo($"           masked targetPocketed = {(targetPocketed & pocketMask):X4}");
+                    _LogInfo($"                  otherPocketed = {otherPocketed:X4}, otherPocketed = {otherPocketed:x4}");
+                    _LogInfo($"           masked otherPocketed = {(otherPocketed & pocketMask):X4}");
                 }
 #endif
 
 #if EIJIS_CALLSHOT
-                isOpponentSink = (otherPocketedLocal & pocketMask) > (otherPocketedOrig & pocketMask);
+                isOpponentSink = (otherPocketed & pocketMask) > 0;
                 if (isObjectiveSink || isOnBreakShot)
                 {
                     isOpponentSink = false;
@@ -3530,7 +3850,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
                 // Win condition: Pocket game ball ( and do not foul )
 #if EIJIS_CALLSHOT
-                winCondition = ((targetPocketedLocal & gameBallMask) == gameBallMask) && !foulCondition;
+                winCondition = ((targetPocketed & gameBallMask) == gameBallMask) && !foulCondition;
 #else
                 winCondition = ((ballsPocketedLocal & gameBallMask) == gameBallMask) && !foulCondition;
 #endif
@@ -3556,10 +3876,6 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
                 {
                     ballsPocketedLocal = ballsPocketedLocal & ~(gameBallMask);
-#if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(gameBallMask);
-                    otherPocketedLocal = otherPocketedLocal & ~(gameBallMask);
-#endif
                     ballsP[gameBallId] = initialPositions[gameModeLocal][gameBallId];
                     //keep moving ball down the table until it's not touching any other balls
                     moveBallInDirUntilNotTouching(gameBallId, Vector3.right * .051f);
@@ -3608,8 +3924,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 
                 foulCondition = isScratch || isWrongHit || isNoTouch || isNoCushon;
-                isObjectiveSink = (targetPocketedLocal & pocketMask) > (targetPocketedOrig & pocketMask);
-                isOpponentSink = (otherPocketedLocal & pocketMask) > (otherPocketedOrig & pocketMask);
+                isObjectiveSink = (targetPocketed & pocketMask) > 0;
+                isOpponentSink = (otherPocketed & pocketMask) > 0;
                 if (isObjectiveSink || isOnBreakShot)
                 {
                     isOpponentSink = false;
@@ -3687,10 +4003,6 @@ public class BilliardsModule : UdonSharpBehaviour
                 {
                     chainedFoulsLocal[teamIdLocal ^ 0x1u] = 0;
                 }
-#if EIJIS_EXTERNAL_SCORE_SCREEN
-                // UpdateScoreSyncRowsByFlags();
-                UpdateScoreSyncRows();
-#endif
                 
                 if (foulCondition && !isScratch && (isNoTouch || isNoCushon || isWrongHit))
                 {
@@ -3719,6 +4031,155 @@ public class BilliardsModule : UdonSharpBehaviour
                     isObjectiveSink = true;
                 }
                 
+                if (goalPointsLocal[teamIdLocal] <= networkingManager.totalPointsSynced[teamIdLocal])
+                {
+                    matchWinCondition = true;
+                }
+
+                colorTurnLocal = false;// colorTurnLocal tracks if it's the break,
+            }
+#endif
+#if EIJIS_BOWLARDS
+            else if (isBowlards)
+            {
+                // re-use variables
+                byte[] frameCounts = fbScoresLocal;
+                byte frameCount = frameCounts[teamIdLocal];
+                
+                int frameNumberBallId = pocketed_ball_upon_pool_order[frameCount];
+                bool isWrongHit = !(!isOnBreakShot || (isOnBreakShot && frameNumberBallId == firstHit)); // !(findLowestUnpocketedBall(ballsPocketedOrig) == firstHit);
+                isWrongHit |= (denyBalls & (0x1u << firstHit)) != 0x0u;
+                bool isNoTouch = firstHit <= 0;
+                bool isNoCushon = !isAnyPocketSink && !ballBounced;
+#if EIJIS_DEBUG_BOWLARDS
+                _LogInfo($"EIJIS_DEBUG  isNoTouch = {isNoTouch}, isNoCushon = {isNoCushon}, isWrongHit = {isWrongHit}, firstHit = {firstHit}, denyBalls = {denyBalls:X4}");
+#endif
+                
+                foulCondition = isScratch || isWrongHit || isNoTouch || isNoCushon;
+                isObjectiveSink = (targetPocketed & pocketMask) > 0;
+                isOpponentSink = (otherPocketed & pocketMask) > 0;
+#if EIJIS_DEBUG_BOWLARDS
+                _LogInfo($"             isObjectiveSink = {isObjectiveSink}, isOpponentSink = {isOpponentSink}, isAnyPocketSink = {isAnyPocketSink}, ballBounced = {ballBounced}");
+                _LogInfo($"  (ballsPocketedLocal & pocketMask) = {(ballsPocketedLocal & pocketMask):x8}, pocketMask = {pocketMask:x8}");
+                _LogInfo($"  targetPocketed = {targetPocketed:x8}, targetPocketedOrig = {targetPocketedOrig:x8}");
+                _LogInfo($"  (targetPocketed & pocketMask) = {(targetPocketed & pocketMask):x8}, (targetPocketedOrig & pocketMask) = {(targetPocketedOrig & pocketMask):x8}");
+#endif
+                if (isObjectiveSink || isOnBreakShot)
+                {
+                    isOpponentSink = false;
+                }
+
+                if (isScratch)
+                {
+                    ballsP[0] = new Vector3(-k_TABLE_WIDTH / 2, 0.0f, 0.0f);
+                }
+                
+                deferLossCondition = false;
+                
+                uint ballsPocketedCurrent = ballsPocketedLocal & ~ballsPocketedOrig;
+                
+                int point = 0;
+                if (!foulCondition && (isObjectiveSink || isOnBreakShot))
+                {
+                    point = (int)SoftwareFallback(ballsPocketedCurrent & pocket_mask_10ball);
+                }
+                
+                if (isOpponentSink || foulCondition)
+                {
+                    int uponBallsCount = pocketedballUponPool(ballsPocketedCurrent, k_TABLE_WIDTH / 2);
+                    if (uponBallsCount <= 0)
+                    {
+                        pocketedballUponPool(ballsPocketedCurrent, 0);
+                    }
+                }
+                
+                winCondition = (ballsPocketedLocal & pocketMask) == pocketMask;
+
+                if (foulCondition && !isScratch && (isNoTouch || isNoCushon || isWrongHit))
+                {
+                    repositionOnFoul = false;
+                }
+                
+                if (isOnBreakShot && !foulCondition)
+                {
+                    isObjectiveSink = true;
+                }
+
+                {
+                    int frameLength = isBowlards1Frame ? 1 : (isBowlards5Frame ? 5 : 10);
+
+                    // re-use variables
+                    // uint goalFrame = goalPointsLocal[teamIdLocal];
+                    bool lastFrame = ((frameCounts[teamIdLocal] + 1) == frameLength);
+                    int throwInningCount = inningCountLocal;
+
+#if EIJIS_DEBUG_BOWLARDS
+                    _LogInfo($"EIJIS_DEBUG  frameCount = {frameCount}, lastFrame = {lastFrame}, throwInningCount = {throwInningCount}");
+#endif
+
+                    updateBowlardsScore(teamIdLocal, frameCount, throwInningCount, point, lastFrame);
+                    
+                    bool lastFrameFailed = false;
+                    if (lastFrame)
+                    {
+                        int lastFrameFirstInningPoint = getBowlardsScore(teamIdLocal, frameLength - 1, 0, true);
+                        int lastFrameSecondInningPoint = getBowlardsScore(teamIdLocal, frameLength - 1, 1, true);
+                        if (0 < throwInningCount && (!isObjectiveSink || foulCondition) &&
+                            lastFrameFirstInningPoint < 10 && 
+                            (lastFrameFirstInningPoint + lastFrameSecondInningPoint) < 10)
+                        {
+                            lastFrameFailed = true;
+                        }
+                    }
+                    
+                    bool rackClear = winCondition;
+                    if ((!isObjectiveSink || foulCondition) || (lastFrame && rackClear))
+                    {
+                        throwInningCount++;
+                        networkingManager.teamIdSynced = (byte)(teamIdLocal | 0x10);
+                    }
+
+                    bool inningOver = ((lastFrame ? 3 : 2) <= throwInningCount);
+                    if ((lastFrame && (inningOver || lastFrameFailed)) || (!lastFrame && (inningOver || rackClear)))
+                    {
+                        frameCounts[teamIdLocal]++;
+#if EIJIS_DEBUG_BOWLARDS
+                        _LogInfo($"EIJIS_DEBUG  FRAME CHANGED frameLength = {frameLength}, frameCount = {frameCount}, fbScoresLocal[{teamIdLocal}] = {fbScoresLocal[teamIdLocal]}");
+#endif
+                        throwInningCount = 0;
+                        
+                        if (frameLength <= frameCounts[0] && (frameLength <= frameCounts[1] || (playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1)))
+                        {
+                            byte[][] framePoints = generateBowlardsScoreByteArrays(frameLength);
+                            scoreScreen.updateValues_Bowlards((int)teamIdLocal, new int[] {frameCounts[0] + (10 - frameLength), frameCounts[1] + (10 - frameLength)}, throwInningCount, framePoints);
+                            int[] scores = scoreScreen.getScore_Bowlards();
+                            if (scores[teamIdLocal] < scores[teamIdLocal ^ 0x1U])
+                            {
+                                matchLossCondition = true;
+                            }
+                            else
+                            {
+                                matchWinCondition = true;
+                            }
+#if EIJIS_DEBUG_BOWLARDS
+                            _LogInfo($"EIJIS_DEBUG  matchWinCondition = {matchWinCondition}, matchLossCondition = {matchLossCondition}, scores = {scores[0]}, {scores[1]}");
+#endif
+                        }
+                        else if (frameCounts[teamIdLocal ^ 0x1U] < frameLength)
+                        {
+                            winCondition = false;
+                            deferLossCondition = true;
+                        }
+                    }
+                    
+                    // re-use variables
+                    inningCountLocal = throwInningCount;
+                }
+
+                isObjectiveSink = true;
+                isOpponentSink = false;
+                foulCondition = false;
+
                 colorTurnLocal = false;// colorTurnLocal tracks if it's the break,
             }
 #endif
@@ -4050,10 +4511,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #endif
 
-#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_ROTATION
+#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_ROTATION || EIJIS_BOWLARDS
             networkingManager._OnSimulationEnded(ballsP, ballsPocketedLocal
-#if EIJIS_CALLSHOT
-                , targetPocketedLocal, otherPocketedLocal
+#if EIJIS_BOWLARDS
+                // , denyBalls
 #endif
                 , fbScoresLocal, colorTurnLocal
 #if EIJIS_PUSHOUT
@@ -4062,15 +4523,18 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_ROTATION
                 , totalPointsLocal, highRunsLocal, chainedPointsLocal, chainedFoulsLocal, inningCountLocal //, winRackCountLocal
 #endif
+#if EIJIS_BOWLARDS
+                , framePointsLocal, framePointsLocal2
+#endif
             );
 #else
             networkingManager._OnSimulationEnded(ballsP, ballsPocketedLocal, fbScoresLocal, colorTurnLocal);
 #endif
-#if EIJIS_ROTATION
+#if EIJIS_ROTATION || EIJIS_BOWLARDS
             
-            if (isRotation && goalPointsLocal[teamIdLocal] <= networkingManager.totalPointsSynced[teamIdLocal])
+            if (matchWinCondition || matchLossCondition)
             {
-                onMatchWin();
+                onMatchWin(matchWinCondition ? teamIdLocal : teamIdLocal ^ 0x1U);
                 return;
             }
             
@@ -4135,7 +4599,7 @@ public class BilliardsModule : UdonSharpBehaviour
             {
                 // Foul
 #if EIJIS_ROTATION
-                onLocalTurnFoul(isScratch, nextTurnBlocked, false, repositionOnFoul, reBreakAllowed);
+                onLocalTurnFoul(isScratch, nextTurnBlocked, repositionOnFoul, reBreakAllowed);
 #else
                 onLocalTurnFoul(isScratch, nextTurnBlocked);
 #endif
@@ -4158,7 +4622,11 @@ public class BilliardsModule : UdonSharpBehaviour
             else if (isObjectiveSink && (!isOpponentSink || is8Ball))
             {
                 // Continue
+#if EIJIS_BOWLARDS
+                onLocalTurnContinue(isBowlards && isScratch);
+#else
                 onLocalTurnContinue();
+#endif
             }
             else
             {
@@ -4629,6 +5097,22 @@ public class BilliardsModule : UdonSharpBehaviour
             initializeRack_Rotation();
         }
 #endif
+#if EIJIS_BOWLARDS
+
+        {
+            // bowlards
+#if EIJIS_MANY_BALLS
+            initialBallsPocketed[GAMEMODE_BOWLARDS_10] = 0xFFFFF800u;
+            initialBallsPocketed[GAMEMODE_BOWLARDS_5] = 0xFFFFF800u;
+            initialBallsPocketed[GAMEMODE_BOWLARDS_1] = 0xFFFFF800u;
+#else
+            initialBallsPocketed[GAMEMODE_BOWLARDS_10] = 0xF800u;
+            initialBallsPocketed[GAMEMODE_BOWLARDS_5] = 0xF800u;
+            initialBallsPocketed[GAMEMODE_BOWLARDS_1] = 0xF800u;
+#endif
+            initializeRack_Bowlards(-1);
+        }
+#endif
     }
 #if EIJIS_ROTATION
     private void initializeRack_Rotation()
@@ -4693,7 +5177,90 @@ public class BilliardsModule : UdonSharpBehaviour
     }    
     
 #endif
+#if EIJIS_BOWLARDS
+    private void initializeRack_Bowlards(int topBallId)
+    {
+        float k_BALL_PL_X = k_BALL_RADIUS; // break placement X
+        float k_BALL_PL_Y = Mathf.Sin(60 * Mathf.Deg2Rad) * k_BALL_DIAMETRE; // break placement Y
+        float quarterTable = k_TABLE_WIDTH / 2;
+        
+        {
+            // bowlards
 
+            int topBallTempId = -1;
+            Vector3 topBallTempPos = Vector3.zero;
+            
+            for (int i = 0, k = 0; i < 4; i++)
+            {
+                for (int j = 0; j <= i; j++)
+                {
+                    initialPositions[GAMEMODE_BOWLARDS_10][pocketed_ball_upon_pool_order[k]] = new Vector3
+                    (
+                        quarterTable + i * k_BALL_PL_Y + UnityEngine.Random.Range(-k_RANDOMIZE_F, k_RANDOMIZE_F),
+                        0.0f,
+                        (-i + j * 2) * k_BALL_PL_X + UnityEngine.Random.Range(-k_RANDOMIZE_F, k_RANDOMIZE_F)
+                    );
+
+                    if (k == 0)
+                    {
+                        topBallTempId = pocketed_ball_upon_pool_order[k];
+                        topBallTempPos = initialPositions[GAMEMODE_BOWLARDS_10][topBallTempId];
+                    }
+
+                    k++;
+                }
+            }
+            
+            if (0 < topBallId && 0 < topBallTempId && topBallId != topBallTempId)
+            {
+                Vector3 temp = initialPositions[GAMEMODE_BOWLARDS_10][topBallId];
+                initialPositions[GAMEMODE_BOWLARDS_10][topBallId] = topBallTempPos;
+                initialPositions[GAMEMODE_BOWLARDS_10][topBallTempId] = temp;
+            }
+            
+            initialBallsPocketed[GAMEMODE_BOWLARDS_5] = initialBallsPocketed[GAMEMODE_BOWLARDS_10];
+            initialPositions[GAMEMODE_BOWLARDS_5] = initialPositions[GAMEMODE_BOWLARDS_10];
+            
+            initialBallsPocketed[GAMEMODE_BOWLARDS_1] = initialBallsPocketed[GAMEMODE_BOWLARDS_10];
+            initialPositions[GAMEMODE_BOWLARDS_1] = initialPositions[GAMEMODE_BOWLARDS_10];
+        }
+    }
+
+    private Vector3[] randomizeBallPositions_Bowlards(int topBallId)
+    {
+        if (!RandomizeBallPositions) return initialPositions[gameModeLocal];
+
+#if EIJIS_MANY_BALLS
+        Vector3[] randomPositions = new Vector3[MAX_BALLS];
+        Array.Copy(initialPositions[gameModeLocal], randomPositions, MAX_BALLS);
+#else
+        Vector3[] randomPositions = new Vector3[16];
+        Array.Copy(initialPositions[gameModeLocal], randomPositions, 16);
+#endif
+        
+#if EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  topBallId = {topBallId}");
+#endif
+        for (int i = 1; i < 11; i++)
+        {
+            // don't move the tor ball
+            if (i == topBallId) continue;
+            Vector3 temp = randomPositions[i];
+            int rand = UnityEngine.Random.Range(1, 11);
+            while (rand == topBallId)
+                rand = UnityEngine.Random.Range(1, 11);
+                        
+#if EIJIS_DEBUG_BOWLARDS
+            // _LogInfo($"EIJIS_DEBUG  i = {i}, rand = {rand}");
+#endif
+            randomPositions[i] = randomPositions[rand];
+            randomPositions[rand] = temp;
+        }
+
+        return randomPositions;
+    }   
+    
+#endif
     private void resetCachedData()
     {
         for (int i = 0; i < 4; i++)
@@ -4963,11 +5530,11 @@ public class BilliardsModule : UdonSharpBehaviour
     }
 
 #if EIJIS_ROTATION
-    private void onMatchWin()
+    private void onMatchWin(uint winner)
     {
-        _LogInfo($"onMatchWin {(teamIdLocal)}");
+        _LogInfo($"onMatchWin {(winner)}");
 
-        networkingManager._OnGameWin(teamIdLocal);
+        networkingManager._OnGameWin(winner);
     }
 
 #endif
@@ -4981,6 +5548,21 @@ public class BilliardsModule : UdonSharpBehaviour
 
         _LogInfo($"onLocalTeamWin {(winner)}");
 
+#if EIJIS_BOWLARDS
+        if (isBowlards)
+        {
+            uint nextTeamId = (playerIDsLocal[1] == -1 && playerIDsLocal[3] == -1)? localTeamId : winner;
+            int frameCount = fbScoresLocal[nextTeamId];
+            int frameNumberBallId = pocketed_ball_upon_pool_order[frameCount];
+            initializeRack_Bowlards(frameNumberBallId);
+            Vector3[] randomPositions = randomizeBallPositions_Bowlards(frameNumberBallId);
+            if (nextTeamId == localTeamId) nextTeamId |= 0x10;
+            networkingManager._OnGameNextBreak(
+                initialBallsPocketed[gameModeLocal], randomPositions, 
+                nextTeamId, 1, false);
+            return;
+        }
+#endif
 #if EIJIS_ROTATION
         if (isRotation)
         {
@@ -5034,7 +5616,7 @@ public class BilliardsModule : UdonSharpBehaviour
     }
 
 #if EIJIS_ROTATION
-    private void onLocalTurnFoul(bool Scratch, bool objBlocked, bool isTimeEnd, bool reposition, bool reBreakAllowed)
+    private void onLocalTurnFoul(bool Scratch, bool objBlocked, bool reposition, bool reBreakAllowed)
 #else
     private void onLocalTurnFoul(bool Scratch, bool objBlocked)
 #endif
@@ -5061,11 +5643,15 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
     }
 
+#if EIJIS_BOWLARDS
+    private void onLocalTurnContinue(bool isScratch = false)
+#else
     private void onLocalTurnContinue()
+#endif
     {
         _LogInfo($"onLocalTurnContinue");
 
-        networkingManager._OnTurnContinue();
+        networkingManager._OnTurnContinue(isScratch);
     }
 
     private void onLocalTimerEnd()
@@ -5091,10 +5677,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
         if (Networking.IsOwner(Networking.LocalPlayer, networkingManager.gameObject))
         {
-#if EIJIS_ROTATION
-            if (isRotation)
+#if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_ROTATION && EIJIS_BOWLARDS
+            if (isRotation || isBowlards)
             {
-                if (!ReferenceEquals(null, scoreScreen)) scoreScreen.updateInfoText_Rotation(networkingManager.stateIdSynced, (teamIdLocal == 0 ? "[Red ]" : "[Blue]") + " time over");
+                if (!ReferenceEquals(null, scoreScreen)) scoreScreen.updateInfoText(networkingManager.stateIdSynced, (teamIdLocal == 0 ? "[Red ]" : "[Blue]") + " time over");
             }
 #endif
             fakeFoulShot();
@@ -5137,8 +5723,8 @@ public class BilliardsModule : UdonSharpBehaviour
         bool isOurTurnVar = isMyTurn();
         bool practiceEnable = (isOurTurnVar && isPracticeMode);
         
-#if EIJIS_10BALL || EIJIS_CUEBALLSWAP || EIJIS_ROTATION
-        if (is9Ball || is10Ball || isPyramid || isRotation)
+#if EIJIS_10BALL || EIJIS_CUEBALLSWAP || EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (is9Ball || is10Ball || isPyramid || isRotation || (isBowlards && colorTurnLocal))
 #else
         if (is9Ball)
 #endif
@@ -5154,7 +5740,11 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             desktopManager._CallCueBallSetActive(true);
 #if EIJIS_CALLSHOT
+#if EIJIS_CALL_DEFAULT_LOCKING
+            if (Networking.LocalPlayer.IsUserInVR()) menuManager._EnableCallClearMenu();
+#else
             if (Networking.LocalPlayer.IsUserInVR()) menuManager._EnableCallLockMenu();
+#endif
 #endif
         }
         else
@@ -5182,8 +5772,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
         markerCalledBall.SetActive(false);
-#if EIJIS_10BALL || EIJIS_ROTATION
-        if (isOurTurnVar && (is8Ball || is10Ball || isRotation))
+#if EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (isOurTurnVar && (is8Ball || is10Ball || isRotation || isBowlards))
 #else
         if (isOurTurnVar && (is8Ball))
 #endif
@@ -5192,8 +5782,19 @@ public class BilliardsModule : UdonSharpBehaviour
             {
                 // if (Networking.LocalPlayer.IsUserInVR())
                 {
+#if EIJIS_CALL_DEFAULT_LOCKING
+                    menuManager._EnableCallClearMenu();
+#else
                     menuManager._EnableCallLockMenu();
-                    menuManager._EnableCallSafetyMenu();
+#endif
+                    if (!isBowlards)
+                    {
+                        menuManager._EnableCallSafetyMenu();
+                    }
+                    else
+                    {
+                        menuManager._DisableCallSafetyMenu();
+                    }
                 }
                 // else
                 // {
@@ -5201,34 +5802,54 @@ public class BilliardsModule : UdonSharpBehaviour
                 //     menuManager._DisableCallSafetyMenu();
                 // }
                 desktopManager._CallShotSetActive(true);
-                desktopManager._CallSafetySetActive(true);
+                desktopManager._CallSafetySetActive(!isBowlards);
                 
             }
             else
             {
+#if EIJIS_CALL_DEFAULT_LOCKING
+                menuManager._DisableCallClearMenu();
+#else
                 menuManager._DisableCallLockMenu();
+#endif
                 menuManager._DisableCallSafetyMenu();
                 desktopManager._CallShotSetActive(false);
                 desktopManager._CallSafetySetActive(false);
             }
 
-            if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(requireCallShotLocal);
+            if (!ReferenceEquals(null, callSafetyOrb) && !isBowlards) callSafetyOrb.SetActive(requireCallShotLocal);
+#if EIJIS_CALL_DEFAULT_LOCKING
+            if (!ReferenceEquals(null, callClearOrb)) callClearOrb.SetActive(requireCallShotLocal);
+#else
             if (!ReferenceEquals(null, callShotLockOrb)) callShotLockOrb.SetActive(requireCallShotLocal);
+#endif
         }
         else
         {
+#if EIJIS_CALL_DEFAULT_LOCKING
+            menuManager._DisableCallClearMenu();
+#else
             menuManager._DisableCallLockMenu();
+#endif
             menuManager._DisableCallSafetyMenu();
             desktopManager._CallShotSetActive(false);
             desktopManager._CallSafetySetActive(false);
             
             if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+            if (!ReferenceEquals(null, callClearOrb)) callClearOrb.SetActive(false);
+#else
             if (!ReferenceEquals(null, callShotLockOrb)) callShotLockOrb.SetActive(false);
+#endif
         }
 
         if (!isOurTurnVar)
         {
+#if EIJIS_CALL_DEFAULT_LOCKING
+            menuManager._DisableCallClearMenu();
+#else
             menuManager._DisableCallLockMenu();
+#endif
             menuManager._DisableCallSafetyMenu();
         }
 #endif
@@ -5317,10 +5938,21 @@ public class BilliardsModule : UdonSharpBehaviour
         semiAutoCalledTimeBall = 0;
 #endif
 #endif
-#if EIJIS_ROTATION && EIJIS_EXTERNAL_SCORE_SCREEN
-        if (isRotation)
+#if EIJIS_BOWLARDS
+        if (isBowlards)
         {
-            if (!ReferenceEquals(null, scoreScreen)) scoreScreen.updateInfoText_Rotation(networkingManager.stateIdSynced, (teamIdLocal == 0 ? "[Red ]" : "[Blue]") + " skip turn");
+            bool isOnBreakShot = colorTurnLocal;
+            if (isOnBreakShot && (playerIDsLocal[1] != -1 || playerIDsLocal[3] != -1))
+            {
+                onLocalTeamWin(teamIdLocal ^ 0x1U, false);
+                return;
+            }
+        }
+#endif
+#if EIJIS_EXTERNAL_SCORE_SCREEN && EIJIS_ROTATION && EIJIS_BOWLARDS
+        if (isRotation || isBowlards)
+        {
+            if (!ReferenceEquals(null, scoreScreen)) scoreScreen.updateInfoText(networkingManager.stateIdSynced, (teamIdLocal == 0 ? "[Red ]" : "[Blue]") + " skip turn");
         }
 #endif
 #if EIJIS_PUSHOUT
@@ -5361,6 +5993,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_CALLSHOT || EIJIS_CUEBALLSWAP
     public void _CallShotLock()
     {
+#if EIJIS_DEBUG_CALLCLEAR
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_CallShotLock()");
+#endif
         networkingManager._OnCallShotLockChanged(!callShotLockLocal);
     }
 
@@ -5371,6 +6006,14 @@ public class BilliardsModule : UdonSharpBehaviour
         networkingManager._OnSafetyCallChanged(!safetyCalledLocal);
     }
     
+    public void _CallClear()
+    {
+#if EIJIS_DEBUG_CALLCLEAR
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_CallClear()");
+#endif
+        networkingManager._OnCallShotClear();
+    }
+
 #endif
 #if EIJIS_PUSHOUT
     public void _PushOut()
@@ -5383,7 +6026,33 @@ public class BilliardsModule : UdonSharpBehaviour
     
     public void _NextBallOnSpot(float x)
     {
-        int target = findLowestUnpocketedBall(ballsPocketedLocal);
+        int target = -1;
+        if (isBowlards)
+        {
+            uint ball_bit = 0x2u;
+            float minX = float.MaxValue;
+            for (int k = 0; k < break_order_10ball.Length; k++)
+            {
+                int i = k + 1;
+                if ((ballsPocketedLocal & ball_bit) == 0x0u)
+                {
+                    if (ballsP[i].x <= -(k_TABLE_WIDTH / 2))
+                    {
+                        if (ballsP[i].x < minX)
+                        {
+                            minX = ballsP[i].x;
+                            target = i;
+                        }
+                    }
+                }
+                ball_bit <<= 1;
+            }
+        }
+        else
+        {
+            target = findLowestUnpocketedBall(ballsPocketedLocal);
+        }
+        if (target < 0) return;
         pocketedballUponPool(0x1u << target, x);
 
         if (semiAutoCallLocal)
@@ -5450,7 +6119,7 @@ public class BilliardsModule : UdonSharpBehaviour
     private void checkNextInKitchenThenMoveToCenter()
     {
         int target = findLowestUnpocketedBall(ballsPocketedLocal);
-        float kitchen_x = -k_SPOT_POSITION_X;
+        float kitchen_x = -k_TABLE_WIDTH / 2;
         if (ballsP[target].x < kitchen_x)
         {
             // next ballがkitchen内の場合はセンターに移動させる
@@ -5468,6 +6137,25 @@ public class BilliardsModule : UdonSharpBehaviour
             {
                 marker9ball.transform.localPosition = ballsP[0];
             }
+#if EIJIS_BOWLARDS
+            else if (isBowlards)
+            {
+                bool isOnBreakShot = colorTurnLocal;
+                if (isOnBreakShot)
+                {
+                    byte[] frameCount = fbScoresLocal;
+                    int target = pocketed_ball_upon_pool_order[frameCount[teamIdLocal]];
+                    // move without changing y
+                    Vector3 oldpos = marker9ball.transform.localPosition;
+                    Vector3 newpos = ballsP[target];
+                    marker9ball.transform.localPosition = new Vector3(newpos.x, oldpos.y, newpos.z);
+                }
+                else
+                {
+                    marker9ball.SetActive(false);
+                }
+            }
+#endif
             else
             {
                 int target = findLowestUnpocketedBall(ballsPocketedLocal);
@@ -5499,8 +6187,8 @@ public class BilliardsModule : UdonSharpBehaviour
             return;
         }
 
-#if EIJIS_10BALL || EIJIS_ROTATION
-        if (!is8Ball && !is10Ball && !isRotation)
+#if EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (!is8Ball && !is10Ball && !isRotation && !isBowlards)
 #else
         if (!is8Ball)
 #endif
@@ -5515,8 +6203,8 @@ public class BilliardsModule : UdonSharpBehaviour
         
         int target = 0;
         uint ball_bit = 0x2u;
-#if EIJIS_10BALL || EIJIS_ROTATION
-        for (int k = 0; k < (isRotation6Balls ? break_order_rotation_6ball.Length + 1 : (is9Ball || isRotation9Balls ? break_order_9ball.Length : (is10Ball || isRotation10Balls ? break_order_10ball.Length : break_order_8ball.Length))); k++)
+#if EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        for (int k = 0; k < (isRotation6Balls ? break_order_rotation_6ball.Length + 1 : (is9Ball || isRotation9Balls ? break_order_9ball.Length : (is10Ball || isRotation10Balls || isBowlards ? break_order_10ball.Length : break_order_8ball.Length))); k++)
 #else
         for (int k = 0; k < (is9Ball ? break_order_9ball.Length : break_order_8ball.Length); k++)
 #endif
@@ -5571,8 +6259,11 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if ((nextBallRepositionStateLocal & 0x1u) > 0 )
         {
-            if (!ReferenceEquals(null, markerCenterSpot)) markerCenterSpot.GetComponent<Collider>().enabled = isOurTurnVar;
-            if (!ReferenceEquals(null, markerCenterSpot)) markerCenterSpot.SetActive(true);
+            if (isRotation)
+            {
+                if (!ReferenceEquals(null, markerCenterSpot)) markerCenterSpot.GetComponent<Collider>().enabled = isOurTurnVar;
+                if (!ReferenceEquals(null, markerCenterSpot)) markerCenterSpot.SetActive(true);
+            }
             if (!ReferenceEquals(null, markerFootSpot)) markerFootSpot.GetComponent<Collider>().enabled = isOurTurnVar;
             if (!ReferenceEquals(null, markerFootSpot)) markerFootSpot.SetActive(true);
         }
@@ -5643,9 +6334,17 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
         if (!ReferenceEquals(null, callSafetyOrb)) callSafetyOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+        if (!ReferenceEquals(null, callClearOrb)) callClearOrb.SetActive(false);
+#else
         if (!ReferenceEquals(null, callShotLockOrb)) callShotLockOrb.SetActive(false);
+#endif
         if (!ReferenceEquals(null, skipTurnOrb)) skipTurnOrb.SetActive(false);
+#if EIJIS_CALL_DEFAULT_LOCKING
+        menuManager._DisableCallClearMenu();
+#else
         menuManager._DisableCallLockMenu();
+#endif
         menuManager._DisableCallSafetyMenu();
 #endif
 #if EIJIS_PUSHOUT
@@ -6625,8 +7324,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 
         bool isOnBreakShot = colorTurnLocal;
-#if EIJIS_10BALL || EIJIS_ROTATION
-        if ((is8Ball || is10Ball || isRotation) && gameLive && canPlayLocal && isMyTurn() && !isOnBreakShot && requireCallShotLocal && cueBallFixed)
+#if EIJIS_10BALL || EIJIS_ROTATION || EIJIS_BOWLARDS
+        if ((is8Ball || is10Ball || isRotation || isBowlards) && gameLive && canPlayLocal && isMyTurn() && !isOnBreakShot && requireCallShotLocal && cueBallFixed)
 #else
         if (is8Ball && gameLive && canPlayLocal && isMyTurn() && !isOnBreakShot && requireCallShotLocal && !markerObj.activeSelf)
 #endif
@@ -6646,7 +7345,11 @@ public class BilliardsModule : UdonSharpBehaviour
             if (semiAutoCallLocal && ((semiAutoCalledTimeBall <= 0 && calledBallId < 0) ||
                                       (!semiAutoCalledPocket && calledPocketId < 0 && 0 < calledBallsLocal)))
             {
+#if EIJIS_BOWLARDS
+                uint findBalls = ballsPocketedLocal | denyBalls;
+#else
                 uint findBalls = ballsPocketedLocal;
+#endif
 #if EIJIS_10BALL || EIJIS_ROTATION
                 if (is10Ball || isRotation)
                 {
@@ -6849,8 +7552,14 @@ public class BilliardsModule : UdonSharpBehaviour
         byte[] chainedFoulsClone = new byte[chainedFoulsLocal.Length];
         Array.Copy(chainedFoulsLocal, chainedFoulsClone, chainedFoulsLocal.Length);
 #endif
-#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_ROTATION
-        return new object[22]
+#if EIJIS_BOWLARDS
+        ushort[] framePointsClone = new ushort[framePointsLocal.Length];
+        Array.Copy(framePointsLocal, framePointsClone, framePointsLocal.Length);
+        ushort[] framePointsClone2 = new ushort[framePointsLocal2.Length];
+        Array.Copy(framePointsLocal2, framePointsClone2, framePointsLocal2.Length);
+#endif
+#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_ROTATION || EIJIS_BOWLARDS
+        return new object[24]
 #else
         return new object[13]
 #endif
@@ -6865,6 +7574,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_ROTATION
             , inningCountLocal ,nextBallRepositionStateLocal, totalPointsClone, highRunsClone, chainedPointsClone, chainedFoulsClone
+#endif
+#if EIJIS_BOWLARDS
+            , framePointsClone, framePointsClone2
 #endif
         };
     }
@@ -6883,6 +7595,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_ROTATION
             , (int)state[16], (uint)state[17], (ushort[])state[18], (ushort[])state[19], (ushort[])state[20], (byte[])state[21]
+#endif
+#if EIJIS_BOWLARDS
+            , (ushort[])state[22], (ushort[])state[23]
 #endif
         );
     }
@@ -6913,6 +7628,16 @@ public class BilliardsModule : UdonSharpBehaviour
         byte[] countA = (byte[])a[21];
         byte[] countB = (byte[])b[21];
         for (int i = 0; i < chainedFoulsLocal.Length; i++) if (countA[i] != countB[i]) return false;
+
+#endif
+#if EIJIS_BOWLARDS
+        pointsA = (ushort[])a[22];
+        pointsB = (ushort[])b[22];
+        for (int i = 0; i < framePointsLocal.Length; i++) if (pointsA[i] != pointsB[i]) return false;
+
+        pointsA = (ushort[])a[23];
+        pointsB = (ushort[])b[23];
+        for (int i = 0; i < framePointsLocal2.Length; i++) if (pointsA[i] != pointsB[i]) return false;
 
 #endif
 #if EIJIS_ROTATION
@@ -7020,9 +7745,10 @@ public class BilliardsModule : UdonSharpBehaviour
         uint uponBalls = 0x0u;
         int uponBallsCount = 0;
         uint uponRacks = 0x0u;
-        uint ball_bit = isRotation6Balls ? 0x4u : 0x2u;
-        for (int i = (isRotation6Balls ? 2 : 1); i < ballsP.Length; i++)
+        for (int j = 0; j < pocketed_ball_upon_pool_order.Length; j++)
         {
+            int i = pocketed_ball_upon_pool_order[j];
+            uint ball_bit = 0x1u << i;
             if ((ballsPocketed & ball_bit) != 0x0u)
             {
 #if EIJIS_DEBUG_BALL_TOUCHING
@@ -7076,12 +7802,9 @@ public class BilliardsModule : UdonSharpBehaviour
                 // int rackPosNum = (int)((beforePos.x - k_rack_position.x) / k_BALL_DIAMETRE);
                 // uponRacks |= 0x1u << rackPosNum;
             }
-            ball_bit <<= 1;
         }
 
-        targetPocketedLocal &= ~((uponBalls << 16) | (uponBalls & 0xFFFFu));
         ballsPocketedLocal &= ~uponBalls;
-        otherPocketedLocal &= ~uponBalls;
         if (uponBallsCount <= 0)
         {
             _LogWarn("failed to upon " + (posX == 0 ? "center" : (posX == k_SPOT_POSITION_X ? "foot" : $"x = {posX}")) + ". no place to put.");
@@ -7142,8 +7865,8 @@ public class BilliardsModule : UdonSharpBehaviour
     public bool CanShotCondition()
     {
         if (!requireCallShotLocal) return true;
-#if EIJIS_10BALL && EIJIS_ROTATION
-        if (!is8Ball && !is10Ball && !isRotation ) return true;
+#if EIJIS_10BALL && EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (!is8Ball && !is10Ball && !isRotation && !isBowlards) return true;
 #else
         if (!is8Ball) return true;
 #endif
@@ -7157,22 +7880,171 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_EXTERNAL_SCORE_SCREEN
 
-    public void UpdateScoreSyncRows()
+    private void updateBowlardsScore(uint teamId, int frame, int throwInning, int point, bool lastFrame)
     {
-        if (ReferenceEquals(null, scoreScreen))  return;
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::updateBowlardsScore(teamId = {teamId}, frame = {frame}, throwInning = {throwInning}, point = {point}, lastFrame = {lastFrame})");
+#endif
+        int additional = (2 <= throwInning ? 1 : 0);
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  additional = {additional}");
+#endif
+
+        byte inningValue;
+
+        if (9 <= frame && lastFrame && 0 < additional)
+        {
+            // re-use variables
+            inningValue = (byte)(chainedFoulsLocal[teamId] & 0x0F);
+            inningValue += (byte)point;
+            chainedFoulsLocal[teamId] &= 0xF0;
+            chainedFoulsLocal[teamId] |= (byte)(inningValue & 0x0F);
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+            // _LogInfo($"EIJIS_DEBUG  final inning data(chainedFoulsLocal[]) = {chainedFoulsLocal[0]}, {chainedFoulsLocal[1]}");
+#endif
+            return;
+        }
+
+        // re-use variables
+        ushort[][] frameVariable = new ushort[][]
+        {
+            framePointsLocal, framePointsLocal,
+            framePointsLocal2, framePointsLocal2,
+            totalPointsLocal, totalPointsLocal,
+            highRunsLocal, highRunsLocal,
+            chainedPointsLocal, chainedPointsLocal
+        };
         
+        ushort frameMask = (ushort)((frame + additional) % 2 == 0 ? 0x00FF : 0xFF00);
+        int frameShift = ((frame + additional) % 2 == 0) ? 0 : 8;
+        byte inningMask = (byte)(throwInning == 1 ? 0xF0 : 0x0F);
+        int inningShift = throwInning == 1 ? 4 : 0;
+        ushort frameClearMask = (ushort)(~(frameMask & (inningMask << frameShift)) & 0xFFFF);
+
+        ushort frameValue = (ushort)((frameVariable[frame + additional][teamId] & frameMask) >> frameShift);
+        inningValue = (byte)((frameValue & inningMask) >> inningShift);
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  frameMask = 0x{frameMask:X4}, frameShift = {frameShift}, inningMask = 0x{inningMask:X2}, inningShift = {inningShift}, frameClearMask = 0x{frameClearMask:X4}");
+        // _LogInfo($"EIJIS_DEBUG  frameVariable[{frame + additional}][{teamId}] = {frameVariable[frame + additional][teamId]}(0x{frameVariable[frame + additional][teamId]:X4})");
+        // _LogInfo($"EIJIS_DEBUG  frameValue = {frameValue}(0x{frameValue:X2})");
+        // _LogInfo($"EIJIS_DEBUG  inningValue = {inningValue}(0x{inningValue:X}) + point = {point}");
+#endif
+        inningValue += (byte)(11 <= point ? 0 : point);
+        frameValue = (ushort)(((inningValue << inningShift) << frameShift) & (inningMask << frameShift));
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  inningValue = {inningValue}(0x{inningValue:X}), frameValue = 0x{frameValue:X4}");
+#endif
+        frameVariable[frame + additional][teamId] &= frameClearMask;
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  frameVariable[{frame + additional}][{teamId}] = {frameVariable[frame + additional][teamId]}(0x{frameVariable[frame + additional][teamId]:X}) cleared");
+#endif
+        frameVariable[frame + additional][teamId] |= frameValue;
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG  frameVariable[{frame + additional}][{teamId}] = {frameVariable[frame + additional][teamId]}(0x{frameVariable[frame + additional][teamId]:X})");
+#endif
+    }
+
+    private int getBowlardsScore(uint teamId, int frame, int throwInning, bool lastFrame)
+    {
+        int additional = (2 <= throwInning ? 1 : 0);
+        int inningValue;
+        
+        if (9 <= frame && lastFrame && 0 < additional)
+        {
+            // re-use variables
+            inningValue = (chainedFoulsLocal[teamId] & 0x0F);
+            return inningValue;
+        }
+        
+        // re-use variables
+        ushort[][] frameVariable = new ushort[][]
+        {
+            framePointsLocal, framePointsLocal,
+            framePointsLocal2, framePointsLocal2,
+            totalPointsLocal, totalPointsLocal,
+            highRunsLocal, highRunsLocal,
+            chainedPointsLocal, chainedPointsLocal
+        };
+        
+        ushort frameMask = (ushort)((frame + additional) % 2 == 0 ? 0x00FF : 0xFF00);
+        int frameShift = ((frame + additional) % 2 == 0) ? 0 : 8;
+        byte inningMask = (byte)(throwInning == 1 ? 0xF0 : 0x0F);
+        int inningShift = throwInning == 1 ? 4 : 0;
+        ushort frameClearMask = (ushort)(~(frameMask & (inningMask << frameShift)) & 0xFFFF);
+
+        ushort frameValue = (ushort)((frameVariable[frame + additional][teamId] & frameMask) >> frameShift);
+        inningValue = ((frameValue & inningMask) >> inningShift);
+        return inningValue;
+    }
+    
+    private byte[][] generateBowlardsScoreByteArrays(int frameLength)
+    {
+        int paddingFrame = 10 - frameLength;
+#if EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG BilliardsModule::generateBowlardsScoreByteArrays(frameLength = {frameLength}) paddingFrame= {paddingFrame}");
+#endif
+        byte[][] framePoints = new byte[2][] { null, null };
         for (int teamId = 0; teamId < 2; teamId++)
         {
-            uint encodeScoreSyncValue = 0;
-            encodeScoreSyncValue = scoreScreen.EncodeScoreParams_Rotation(
-                totalPointsLocal[teamId],
-                goalPointsLocal[teamId],
-                highRunsLocal[teamId],
-                chainedFoulsLocal[teamId]
-            );
-
-            networkingManager.scoreSyncRows[teamId] = encodeScoreSyncValue;
+            byte[] framePoint = generateBowlardsScoreByteArray(teamId);
+#if EIJIS_DEBUG_BOWLARDS
+            // _Log(
+            //     $"{framePoint[0]:X2} "+
+            //     $"{framePoint[1]:X2} "+
+            //     $"{framePoint[2]:X2} "+
+            //     $"{framePoint[3]:X2} "+
+            //     $"{framePoint[4]:X2} "+
+            //     $"{framePoint[5]:X2} "+
+            //     $"{framePoint[6]:X2} "+
+            //     $"{framePoint[7]:X2} "+
+            //     $"{framePoint[8]:X2} "+
+            //     $"{framePoint[9]:X2} "+
+            //     $"{framePoint[10]:X}"
+            // );
+#endif
+            byte[] framePointPadding = new byte[11];
+            Array.Copy(framePoint, 0, framePointPadding, paddingFrame, frameLength + 1);
+            framePoints[teamId] = framePointPadding;
         }
+
+        return framePoints;
+    }
+    
+    private byte[] generateBowlardsScoreByteArray(int teamId)
+    {
+#if EIJIS_DEBUG_BOWLARDS
+        // _LogInfo($"EIJIS_DEBUG BilliardsModule::generateBowlardsScoreByteArray(teamId = {teamId}) chainedFoulsLocal = {chainedFoulsLocal[0]}, {chainedFoulsLocal[1]}, chainedFoulsSynced = {networkingManager.chainedFoulsSynced[0]}, {networkingManager.chainedFoulsSynced[1]}");
+#endif
+        byte[] framePointsByTeam = new byte[11];
+
+        int i = 0;
+        framePointsByTeam[i++] = (byte)((framePointsLocal[teamId] & 0x00FF) >> 0);
+        framePointsByTeam[i++] = (byte)((framePointsLocal[teamId] & 0xFF00) >> 8);
+        framePointsByTeam[i++] = (byte)((framePointsLocal2[teamId] & 0x00FF) >> 0);
+        framePointsByTeam[i++] = (byte)((framePointsLocal2[teamId] & 0xFF00) >> 8);
+        framePointsByTeam[i++] = (byte)((totalPointsLocal[teamId] & 0x00FF) >> 0);
+        framePointsByTeam[i++] = (byte)((totalPointsLocal[teamId] & 0xFF00) >> 8);
+        framePointsByTeam[i++] = (byte)((highRunsLocal[teamId] & 0x00FF) >> 0);
+        framePointsByTeam[i++] = (byte)((highRunsLocal[teamId] & 0xFF00) >> 8);
+        framePointsByTeam[i++] = (byte)((chainedPointsLocal[teamId] & 0x00FF) >> 0);
+        framePointsByTeam[i++] = (byte)((chainedPointsLocal[teamId] & 0xFF00) >> 8);
+        framePointsByTeam[i] = networkingManager.chainedFoulsSynced[teamId]; // chainedFoulsLocal[teamId];
+
+        return framePointsByTeam;
+    }
+    
+    private void clearBowlardsScoreVariables(int teamId)
+    {
+#if EIJIS_DEBUG_SCORE_SCREEN && EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::clearBowlardsScoreVariables(teamId = {teamId})");
+#endif
+        networkingManager.framePointsSynced[teamId] = framePointsLocal[teamId] = 0;
+        networkingManager.framePointsSynced2[teamId] = framePointsLocal2[teamId] = 0;
+        networkingManager.totalPointsSynced[teamId] = totalPointsLocal[teamId] = 0;
+        networkingManager.highRunsSynced[teamId] = highRunsLocal[teamId] = 0;
+        networkingManager.chainedPointsSynced[teamId] = chainedPointsLocal[teamId] = 0;
+        networkingManager.chainedFoulsSynced[teamId] = chainedFoulsLocal[teamId] = 0;
+        networkingManager.fourBallScoresSynced[teamId] = fbScoresLocal[teamId] = 0;
     }
 #endif
 #endregion
@@ -7228,8 +8100,17 @@ public class BilliardsModule : UdonSharpBehaviour
     public void checkDistanceLoD()
     {
         bool nowDistant = (Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position) > LoDDistance) && !noLOD
+// #if EIJIS_ROTATION || EIJIS_DEBUG_BOWLARDS // ← この指定は間違っている。正しくは EIJIS_BOWLARDS これが不具合の原因かも
+// #if EIJIS_ROTATION || EIJIS_BOWLARDS
+#if EIJIS_ROTATION // ← この状態にして不具合の再現を待つ
+        && !((networkingManager.gameStateSynced == 2 || networkingManager.gameStateSynced == 4) && Networking.IsOwner(networkingManager.gameObject));
+#else
         && !(networkingManager.gameStateSynced == 2 && Networking.IsOwner(networkingManager.gameObject));
+#endif
         if (nowDistant == localPlayerDistant) { return; }
+#if EIJIS_DEBUG_BOWLARDS
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::checkDistanceLoD() nowDistant = {nowDistant}, localPlayerDistant = {localPlayerDistant}, n.gameStateSynced = {networkingManager.gameStateSynced}, n.delayedDeserialization = {networkingManager.delayedDeserialization}");
+#endif
         if (isPlayer)
         {
             localPlayerDistant = false;
@@ -7301,29 +8182,31 @@ public class BilliardsModule : UdonSharpBehaviour
         
         if (networkingManager.stateIdSynced < stateIdLocal && networkingManager.stateIdSynced != 1)
         {
-            scoreScreen.clearInfoText_Rotation();
+            scoreScreen.clearInfoText();
             return;
         }
 
         bool turnStateChanged = (networkingManager.turnStateSynced != turnStateLocal);
         if (!turnStateChanged) return;
 
-#if EIJIS_ROTATION
-        if (!isRotation) return;
+#if EIJIS_ROTATION || EIJIS_BOWLARDS
+        if (!isRotation && !isBowlards) return;
         
         bool teamIdChanged = (teamIdLocal != networkingManager.teamIdSynced);
         bool isTurnSimulate = (networkingManager.turnStateSynced == 1);
-        bool isFoul = (networkingManager.nextBallRepositionStateSynced & 0x1u) > 0;
-        bool isSkipped = (!isFoul && networkingManager.turnStateSynced == 2 && networkingManager.foulStateSynced == 0);
+        bool isRotationFoul = isRotation && (networkingManager.nextBallRepositionStateSynced & 0x1u) > 0;
+        bool isSkipped = (!isRotationFoul && networkingManager.turnStateSynced == 2 && networkingManager.foulStateSynced == 0);
         bool isOnBreakShot = networkingManager.colorTurnSynced;
         bool isCalled = networkingManager.calledBallsSynced != 0 && networkingManager.pointPocketsSynced != 0;
         uint calledBalls = networkingManager.calledBallsSynced;
         uint calledPockets = networkingManager.pointPocketsSynced;
-        bool isNoShotOperation = turnStateLocal == 0 && networkingManager.turnStateSynced == 2;
+        bool isNoShotOperation = turnStateLocal == 0 && networkingManager.turnStateSynced == 2; // cueBall reposition or choice spot
+        // bool isBowlardsFoul = isBowlards && !isOnBreakShot && networkingManager.foulStateSynced == 1;
+        bool isBowlardsThrowInningChanged = isBowlards && inningCountLocal != networkingManager.inningCountSynced;
 
 #if EIJIS_DEBUG_SCORE_SCREEN
         // _LogInfo($"  stateIdSynced = {networkingManager.stateIdSynced}, stateIdLocal = {stateIdLocal}, teamIdChanged = {teamIdChanged}, isTurnSimulate = {isTurnSimulate}, isSkipped = {isSkipped}, foulStateChanged = {foulStateChanged}, isFoul = {isFoul}, isOnBreakShot = {isOnBreakShot}");
-        _LogInfo($"  stateIdSynced = {networkingManager.stateIdSynced}, stateIdLocal = {stateIdLocal}, teamIdChanged = {teamIdChanged}, isTurnSimulate = {isTurnSimulate}, isSkipped = {isSkipped}, isFoul = {isFoul}, isOnBreakShot = {isOnBreakShot}");
+        _LogInfo($"  stateIdSynced = {networkingManager.stateIdSynced}, stateIdLocal = {stateIdLocal}, teamIdChanged = {teamIdChanged}, isTurnSimulate = {isTurnSimulate}, isSkipped = {isSkipped}, isRotationFoul = {isRotationFoul}, isOnBreakShot = {isOnBreakShot}");
 #endif
 
         string message = string.Empty;
@@ -7331,7 +8214,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (networkingManager.stateIdSynced == 0)
         {
-            scoreScreen.clearInfoText_Rotation();
+            scoreScreen.clearInfoText();
         }
         else if (isTurnSimulate)
         {
@@ -7384,13 +8267,13 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_DEBUG_SCORE_SCREEN
             _LogInfo($"  key = {networkingManager.stateIdSynced}, message = {message}");
 #endif
-            scoreScreen.updateInfoText_Rotation(networkingManager.stateIdSynced, $"{teamName} {message}");
+            scoreScreen.updateInfoText(networkingManager.stateIdSynced, $"{teamName} {message}");
         }
-        else if (!isNoShotOperation && (teamIdChanged || !isFoul))
+        else if (!isNoShotOperation && (teamIdChanged || !isRotationFoul))
         {
-            if (teamIdChanged)
+            if (isRotation && teamIdChanged)
             {
-                if (isFoul)
+                if (isRotationFoul)
                 {
                     message = $" -> foul (count {networkingManager.chainedFoulsSynced[networkingManager.teamIdSynced ^ 0x1u]})";
                 }
@@ -7407,14 +8290,19 @@ public class BilliardsModule : UdonSharpBehaviour
                     message = " -> turn change (safe shot)";
                 }
             }
-            else if (!isFoul)
+            else if (isBowlardsThrowInningChanged)
+            {
+                // message = " -> failed (inning end)";
+                message = " -> inning end";
+            }
+            else if (!isRotationFoul)
             {
                 message = " -> success";
             }
 #if EIJIS_DEBUG_SCORE_SCREEN
             _LogInfo($"  key = {stateIdLocal}, message = {message}");
 #endif
-            scoreScreen.updateInfoText_Rotation(stateIdLocal, message);
+            scoreScreen.updateInfoText(networkingManager.stateIdSynced, $"{teamName} {message}");
         }
 #endif
     }

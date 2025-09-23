@@ -5,6 +5,7 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
 #define EIJIS_ROTATION
+#define EIJIS_BOWLARDS
 
 // #define EIJIS_CALLSHOT_ALLOW_UNSELECT
 
@@ -574,8 +575,8 @@ public class DesktopManager : UdonSharpBehaviour
     private void updateCallShotIndicator()
     {
 #if EIJIS_CALLSHOT
-#if EIJIS_10BALL && EIJIS_ROTATION
-        if ((!table.isPyramid && (!table.requireCallShotLocal || (!table.is8Ball && !table.is10Ball && !table.isRotation))) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
+#if EIJIS_10BALL && EIJIS_ROTATION || EIJIS_BOWLARDS
+        if ((!table.isPyramid && (!table.requireCallShotLocal || (!table.is8Ball && !table.is10Ball && !table.isRotation && !table.isBowlards))) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
 #else
         if ((!table.isPyramid && (!table.requireCallShotLocal || !table.is8Ball)) || (!callCueBall.activeSelf && !callShot.activeSelf && !pushOut.activeSelf)) return;
 #endif

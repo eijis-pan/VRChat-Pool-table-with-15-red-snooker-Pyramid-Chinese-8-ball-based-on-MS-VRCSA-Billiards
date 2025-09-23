@@ -1,5 +1,6 @@
 ﻿#define EIJIS_ISSUE_FIX
 #define CHEESE_ISSUE_FIX
+#define EIJIS_BOWLARDS
 
 using System;
 using UdonSharp;
@@ -447,7 +448,11 @@ public class CueController : UdonSharpBehaviour
     {
         // enable if live, in LoD range,
         // disable second cue if in practice mode
+#if  EIJIS_BOWLARDS
+        if (table.gameLive && !table.localPlayerDistant && (!(table.playerIDsLocal[1] == -1 && table.playerIDsLocal[3] == -1) || this == table.cueControllers[0]))
+#else
         if (table.gameLive && !table.localPlayerDistant && (!table.isPracticeMode || this == table.cueControllers[0]))
+#endif
             cueRenderer.enabled = true;
         else
             cueRenderer.enabled = false;

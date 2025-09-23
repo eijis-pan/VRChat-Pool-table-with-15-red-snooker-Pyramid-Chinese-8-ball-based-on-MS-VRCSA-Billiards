@@ -41,7 +41,10 @@ public class PlayerRow : UdonSharpBehaviour
     public const int COL_ROTATION_FOUL = 3;
     public const int COL_ROTATION_FOOT_INNING = 3;
 
+    public const int COL_BOWLARDS_FINAL_SCORE = 30;
+
     public const int COL_FOOTER_INFO_TEXT = 0;
+    public const int COL_FOOTER_REGULATION_TEXT = 1;
 
     private Text[] allTexts = new Text[MAX_NUMBER_COL_COUNT + 1];
     [SerializeField] Text[] scoreTexts = new Text[MAX_NUMBER_COL_COUNT];
@@ -50,6 +53,10 @@ public class PlayerRow : UdonSharpBehaviour
     private bool[] scoreSigned = new bool[MAX_NUMBER_COL_COUNT];
     private bool[] scoreEmptyTextOnZero = new bool[MAX_NUMBER_COL_COUNT];
     private bool[] scoreNoChangeTextOnZero = new bool[MAX_NUMBER_COL_COUNT];
+
+    [SerializeField] GameObject[] mark1 = new GameObject[MAX_NUMBER_COL_COUNT]; // Bowlards spare
+    [SerializeField] GameObject[] mark2 = new GameObject[MAX_NUMBER_COL_COUNT]; // Bowlards strike
+    [SerializeField] GameObject[] mark3 = new GameObject[MAX_NUMBER_COL_COUNT]; // Current cell indicator
     
     [NonSerialized] private BilliardsModule table;
 
@@ -765,6 +772,405 @@ public class PlayerRow : UdonSharpBehaviour
         UpdateText();
     }
 
+    public void setFrameLength_Bowlards(int goalFrameNumber)
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS PlayerRow::setFrameLength_Bowlards(goalFrameNumber = {goalFrameNumber}) [{GetInstanceID()}]");
+#endif
+
+#if DEBUG_EIJIS_SCORE_SCREEN
+        bool[] debugVisibles = new bool[scoreTexts.Length];
+#endif
+        int count = 0;
+        for (int i = scoreTexts.Length - 1; 0 <= i; i--)
+        {
+            bool hide = goalFrameNumber <= count;
+#if DEBUG_EIJIS_SCORE_SCREEN
+            // table._Log($"EIJIS_DEBUG  i = {i}, hide = {hide}");
+            debugVisibles[i] = !hide;
+#endif
+            Text scoreText = scoreTexts[i];
+            if (ReferenceEquals(null, scoreText))
+            {
+                continue;
+            }
+            scoreText.transform.parent.parent.gameObject.SetActive(!hide);
+            count++;
+            if (10 <= count)
+            {
+                break;
+            }
+        }
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log(
+            (debugVisibles[0]?"*":"-")+"  "+
+            (debugVisibles[1]?"*":"-")+"  "+
+            (debugVisibles[2]?"*":"-")+"  "+
+            (debugVisibles[3]?"*":"-")+"  "+
+            (debugVisibles[4]?"*":"-")+"  "+
+            (debugVisibles[5]?"*":"-")+"  "+
+            (debugVisibles[6]?"*":"-")+"  "+
+            (debugVisibles[7]?"*":"-")+"  "+
+            (debugVisibles[8]?"*":"-")+"  "+
+            (debugVisibles[9]?"*":"-")
+        );
+#endif
+    }   
+    
+    /// <summary>
+    /// Bowlards のスコア更新
+    /// </summary>
+    public void ScoreUpdate_Bowlards(int frameCount, int throwInningCount, byte[] framePoints)
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS PlayerRow::ScoreUpdate_Bowlards(frameCount = {frameCount}, throwInningCount = {throwInningCount}, framePoints.Length = {framePoints.Length}) [{GetInstanceID()}]");
+#endif
+        
+        int[] pointByFrameNoBonus = new int[12];
+        int[] bonusTypeByFrame = new int[12];
+        byte[] pointByInning = new byte[21];
+        byte additional = (byte)((framePoints[10] & 0x0F) >> 0);
+#if DEBUG_EIJIS_SCORE_SCREEN
+        // table._Log($"EIJIS_DEBUG  additional = {additional}");
+#endif
+        for (int i = 0; i < 10; i++)
+        {
+            bool isLastFrame = (i == 9);
+            byte first = (byte)((framePoints[i] & 0x0F) >> 0);
+            byte second = (byte)((framePoints[i] & 0xF0) >> 4);
+            byte third = (byte)(isLastFrame ? additional : 0);
+            
+            pointByInning[i * 2] = first;
+            pointByInning[(i * 2) + 1] = second;
+            if (isLastFrame) pointByInning[20] = third;
+
+            int subTotal = first + second;
+#if DEBUG_EIJIS_SCORE_SCREEN
+            // table._Log($"EIJIS_DEBUG  i = {i}, isLastFrame = {isLastFrame}, first = {first}, second = {second}, third = {third}, subTotal = {subTotal}");
+#endif
+            if (10 <= first)
+            {
+                bonusTypeByFrame[i] = 2;
+                if (isLastFrame)
+                {
+                    subTotal = first;
+                    pointByFrameNoBonus[10] = second;
+                    pointByFrameNoBonus[11] = third;
+                    if (10 <= second)
+                    {
+                        // pointByFrameNoBonus[10] = second;
+                        // pointByFrameNoBonus[11] = third;
+                        bonusTypeByFrame[10] = 2;
+                        if (10 <= third)
+                        {
+                            bonusTypeByFrame[11] = 2;
+                        }
+                    }
+                    else if (10 <= second + third)
+                    {
+                        // pointByFrameNoBonus[10] = second + third;
+                        bonusTypeByFrame[11] = 1;
+                    }
+                }
+            }
+            else if (10 <= subTotal)
+            {
+                if (isLastFrame)
+                {
+                    pointByFrameNoBonus[10] = third;
+                    bonusTypeByFrame[10] = 1;
+                    if (10 <= third)
+                    {
+                        bonusTypeByFrame[11] = 2;
+                    }
+                }
+                else
+                {
+                    bonusTypeByFrame[i] = 1;
+                }
+            }
+            else
+            {
+                bonusTypeByFrame[i] = 0;
+            }
+
+            pointByFrameNoBonus[i] = subTotal;
+        }
+
+        int fixedFrame = frameCount - 1;
+        if (fixedFrame < 9)
+        {
+            if (1 <= fixedFrame && 2 == bonusTypeByFrame[fixedFrame] && 2 == bonusTypeByFrame[fixedFrame - 1])
+            {
+                fixedFrame -= 2;
+            }
+            else if (0 <= fixedFrame)
+            {
+                if (2 == bonusTypeByFrame[fixedFrame] || (1 == bonusTypeByFrame[fixedFrame] && throwInningCount < 1))
+                {
+                    fixedFrame -= 1;
+                }
+            }
+        }
+            
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS_DEBUG  fixedFrame = {fixedFrame}");
+#endif
+
+        int[] pointByFrame = new int[10];
+        for (int i = 0; i <= fixedFrame; i++)
+        {
+            if (pointByFrame.Length <= i) break;
+            
+            pointByFrame[i] = pointByFrameNoBonus[i];
+            if (1 == bonusTypeByFrame[i])
+            {
+                pointByFrame[i] += pointByInning[((i + 1) * 2)];
+            }
+            else if (2 == bonusTypeByFrame[i])
+            {
+                // pointByFrame[i] += pointByFrameNoBonus[i + 1] + pointByFrameNoBonus[i + 2];
+                pointByFrame[i] += pointByFrameNoBonus[i + 1];
+                if (2 == bonusTypeByFrame[i + 1])
+                {
+                    if (2 == bonusTypeByFrame[i + 2])
+                    {
+                        pointByFrame[i] += pointByFrameNoBonus[i + 2];
+                    }
+                    else if (i < 9)
+                    {
+                        pointByFrame[i] += pointByInning[((i + 2) * 2)];
+                    }
+                }
+            }
+
+            if (9 <= i)
+            {
+                if (1 == bonusTypeByFrame[10])
+                {
+                    pointByFrame[9] += pointByFrameNoBonus[10];
+                }
+                else if (0 == bonusTypeByFrame[10] || (2 == bonusTypeByFrame[10] && pointByFrameNoBonus[11] < 10))
+                {
+                    pointByFrame[9] += pointByFrameNoBonus[11];
+                }
+            }
+        }
+        
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log(
+            $"{pointByInning[0]:X}{pointByInning[1]:X} "+
+            $"{pointByInning[2]:X}{pointByInning[3]:X} "+
+            $"{pointByInning[4]:X}{pointByInning[5]:X} "+
+            $"{pointByInning[6]:X}{pointByInning[7]:X} "+
+            $"{pointByInning[8]:X}{pointByInning[9]:X} "+
+
+            $"{pointByInning[10]:X}{pointByInning[11]:X} "+
+            $"{pointByInning[12]:X}{pointByInning[13]:X} "+
+            $"{pointByInning[14]:X}{pointByInning[15]:X} "+
+            $"{pointByInning[16]:X}{pointByInning[17]:X} "+
+            $"{pointByInning[18]:X}{pointByInning[19]:X}{pointByInning[20]:X}"
+        );
+        table._Log(
+            $"{pointByFrameNoBonus[0],2:D} "+
+            $"{pointByFrameNoBonus[1],2:D} "+
+            $"{pointByFrameNoBonus[2],2:D} "+
+            $"{pointByFrameNoBonus[3],2:D} "+
+            $"{pointByFrameNoBonus[4],2:D} "+
+            $"{pointByFrameNoBonus[5],2:D} "+
+            $"{pointByFrameNoBonus[6],2:D} "+
+            $"{pointByFrameNoBonus[7],2:D} "+
+            $"{pointByFrameNoBonus[8],2:D} "+
+            $"{pointByFrameNoBonus[9],2:D}("+
+            $"{pointByFrameNoBonus[10],2:D} "+
+            $"{pointByFrameNoBonus[11],2:D})"
+        );
+        table._Log(
+            $"{pointByFrame[0],2:D} "+
+            $"{pointByFrame[1],2:D} "+
+            $"{pointByFrame[2],2:D} "+
+            $"{pointByFrame[3],2:D} "+
+            $"{pointByFrame[4],2:D} "+
+            $"{pointByFrame[5],2:D} "+
+            $"{pointByFrame[6],2:D} "+
+            $"{pointByFrame[7],2:D} "+
+            $"{pointByFrame[8],2:D} "+
+            $"{pointByFrame[9],2:D}"
+        );
+#endif
+
+        // scoreSyncRow.SetEmptyTextOnZero(true);
+        bool[] scoreEmptyTextOnZeroArray = new bool[31]; // scoreTexts.Length
+        for (int i = 0; i < 10; i++)
+        {
+#if true // 0_POINT_TO_G
+            scoreEmptyTextOnZeroArray[i * 2] = !(fixedFrame < i && i == frameCount && 0 == throwInningCount);
+            scoreEmptyTextOnZeroArray[(i * 2) + 1] = !(fixedFrame < i && i == frameCount && 1 == throwInningCount);
+#else
+            scoreEmptyTextOnZeroArray[i * 2] = !((i < frameCount || (i == frameCount && 0 <= throwInningCount)) && (bonusTypeByFrame[i] != 2));
+            scoreEmptyTextOnZeroArray[(i * 2) + 1] = !((i < frameCount || (i == frameCount && 1 <= throwInningCount)) && (bonusTypeByFrame[i] < 1));
+#endif
+            scoreEmptyTextOnZeroArray[i + 21] = !(i <= fixedFrame);
+        }
+        scoreEmptyTextOnZeroArray[20] = !(9 <= frameCount && 2 <= throwInningCount);
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log(
+            (scoreEmptyTextOnZeroArray[0]?"_":"*")+(scoreEmptyTextOnZeroArray[1]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[2]?"_":"*")+(scoreEmptyTextOnZeroArray[3]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[4]?"_":"*")+(scoreEmptyTextOnZeroArray[5]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[6]?"_":"*")+(scoreEmptyTextOnZeroArray[7]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[8]?"_":"*")+(scoreEmptyTextOnZeroArray[9]?"_":"*")+" "+
+
+            (scoreEmptyTextOnZeroArray[10]?"_":"*")+(scoreEmptyTextOnZeroArray[11]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[12]?"_":"*")+(scoreEmptyTextOnZeroArray[13]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[14]?"_":"*")+(scoreEmptyTextOnZeroArray[15]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[16]?"_":"*")+(scoreEmptyTextOnZeroArray[17]?"_":"*")+" "+
+            (scoreEmptyTextOnZeroArray[18]?"_":"*")+(scoreEmptyTextOnZeroArray[19]?"_":"*")+(scoreEmptyTextOnZeroArray[20]?"_":"*")
+            );
+        table._Log(
+        "  "+
+           (scoreEmptyTextOnZeroArray[21]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[22]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[23]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[24]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[25]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[26]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[27]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[28]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[29]?"_":"*")+"  "+
+           (scoreEmptyTextOnZeroArray[30]?"_":"*")
+        );
+        table._Log(
+            $" {bonusTypeByFrame[0]} "+
+            $" {bonusTypeByFrame[1]} "+
+            $" {bonusTypeByFrame[2]} "+
+            $" {bonusTypeByFrame[3]} "+
+            $" {bonusTypeByFrame[4]} "+
+            $" {bonusTypeByFrame[5]} "+
+            $" {bonusTypeByFrame[6]} "+
+            $" {bonusTypeByFrame[7]} "+
+            $" {bonusTypeByFrame[8]} "+
+            $" {bonusTypeByFrame[9]} "+
+            $"( {bonusTypeByFrame[10]}  {bonusTypeByFrame[11]})"
+        );
+#endif
+        SetEmptyTextOnZeroByArray(scoreEmptyTextOnZeroArray);
+
+        int j = 0;
+        for (int i = 0; i < pointByInning.Length; i++)
+        {
+            if (ReferenceEquals(null, scores[j])) continue;
+            if (scoreTexts.Length <= j) break;
+
+            int frame = i / 2;
+            int inningByFrame = i % 2;
+            int displayInningPoint = pointByInning[i];
+                
+            if ((i <= 18 && bonusTypeByFrame[frame] == 1 && inningByFrame == 1) || 
+                (i <= 18 && bonusTypeByFrame[frame] == 2 && inningByFrame == 0) ||
+                (i == 19 && (bonusTypeByFrame[10] == 1 || bonusTypeByFrame[10] == 2)) ||
+                (i == 20 && (bonusTypeByFrame[11] == 1 || bonusTypeByFrame[11] == 2)))
+            {
+                displayInningPoint = 0;
+            }
+
+            scores[j++] = displayInningPoint;
+        }
+
+        int total = 0;
+        for (int i = 0; i <= fixedFrame; i++)
+        {
+            if (pointByFrame.Length <= i) break;
+            if (ReferenceEquals(null, scores[j])) continue;
+            if (scoreTexts.Length <= j) break;
+
+            total += pointByFrame[i];
+            scores[j++] = total;
+        }
+
+        while (j < scores.Length)
+        {
+            if (ReferenceEquals(null, scores[j])) continue;
+            scores[j++] = 0;
+        }
+        
+        j = 0;
+        for (int i = 0; i < bonusTypeByFrame.Length; i++)
+        {
+            if (ReferenceEquals(null, mark1[j])) continue;
+            if (mark1.Length <= j) break;
+
+#if DEBUG_EIJIS_SCORE_SCREEN
+            // table._Log($"EIJIS_DEBUG  mark1[{j}] bonusTypeByFrame[{i}] = {bonusTypeByFrame[i]}");
+#endif
+            mark1[j++].SetActive(bonusTypeByFrame[i] == 1);
+        }
+        
+        j = 0;
+        for (int i = 0; i < bonusTypeByFrame.Length; i++)
+        {
+            if (ReferenceEquals(null, mark2[j])) continue;
+            if (mark2.Length <= j) break;
+
+#if DEBUG_EIJIS_SCORE_SCREEN
+            // table._Log($"EIJIS_DEBUG  mark2[{j}] bonusTypeByFrame[{i}] = {bonusTypeByFrame[i]}");
+#endif
+            mark2[j++].SetActive(bonusTypeByFrame[i] == 2);
+        }
+
+        int currentInning = (frameCount * 2) + throwInningCount;
+        for (int i = 0; i < mark3.Length; i++)
+        {
+            if (ReferenceEquals(null, mark3[i])) continue;
+            mark3[i].SetActive(0 <= throwInningCount && i == currentInning);
+        }
+
+#if DEBUG_EIJIS_SCORE_SCREEN
+        // UpdateText_debug = true;
+#endif
+        UpdateText();
+#if DEBUG_EIJIS_SCORE_SCREEN
+        // UpdateText_debug = false;
+#endif
+        
+        j = 0;
+        for (int i = 0; i < pointByInning.Length; i++)
+        {
+            if (ReferenceEquals(null, scores[j])) continue;
+            if (scoreTexts.Length <= j) break;
+
+            int frame = i / 2;
+            int inningByFrame = i % 2;
+            int displayInningPoint = pointByInning[i];
+                
+            // if (displayInningPoint == 0 && (frame <= fixedFrame || (frame == frameCount && inningByFrame < throwInningCount)))
+            if (displayInningPoint == 0 && (frame < frameCount || (frame == frameCount && inningByFrame < throwInningCount) || 10 <= frameCount))
+            {
+                if (!ReferenceEquals(null, scoreTexts[j]))
+                {
+                    if (inningByFrame == 0 && frame < 10)
+                    {
+                        scoreTexts[j].text = "G";
+                    }
+                    else if (bonusTypeByFrame[frame] != 2 && inningByFrame == 1)
+                    {
+                        scoreTexts[j].text = "-";
+                    }
+                    else if (j == 20 && bonusTypeByFrame[frame] != 0)
+                    {
+                        scoreTexts[j].text = "-";
+                    }
+                    else
+                    {
+                        scoreTexts[j].text = String.Empty;
+                    }
+                }
+            }
+
+            j++;
+        }
+    }
+
     public int GetPoint()
     {
         return scores[COL_POINT];
@@ -966,4 +1372,24 @@ public class PlayerRow : UdonSharpBehaviour
         scoreTexts[COL_FOOTER_INFO_TEXT].text = message;
     }
 
+    public void SetRegulationText(string message)
+    {
+        scoreTexts[COL_FOOTER_REGULATION_TEXT].text = message;
+    }
+    
+    public int GetBowlardsFinalScore()
+    {
+#if DEBUG_EIJIS_SCORE_SCREEN
+        table._Log($"EIJIS PlayerRow::GetBowlardsFinalScore() [{GetInstanceID()}]");
+        table._Log($"EIJIS  scores.Length = {scores.Length}");
+        for (int i = 0; i < scores.Length; i++)
+        {
+            // table._Log($"EIJIS  scores[i = {i}] is null = {ReferenceEquals(null, scores[i])}");
+            table._Log($"EIJIS  scores[i = {i}] = {scores[i]}");
+        }
+#endif
+
+        if (scores.Length <= COL_BOWLARDS_FINAL_SCORE || ReferenceEquals(null, scores[COL_BOWLARDS_FINAL_SCORE])) return -1;
+        return scores[COL_BOWLARDS_FINAL_SCORE];
+    }
 }

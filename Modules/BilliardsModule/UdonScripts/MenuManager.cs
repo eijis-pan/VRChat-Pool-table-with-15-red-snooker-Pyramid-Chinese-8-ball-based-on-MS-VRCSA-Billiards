@@ -4,6 +4,7 @@
 #define EIJIS_GUIDELINE2TOGGLE
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
+#define EIJIS_CALL_DEFAULT_LOCKING
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
@@ -11,6 +12,7 @@
 #define EIJIS_EXTRA_GAMES
 #define EIJIS_ROTATION
 #define EIJIS_CUSTOM_GOAL_POINT
+#define EIJIS_BOWLARDS
 
 // #define EIJIS_DEBUG_CALLSHOT_TURNPASS_OPTION
 
@@ -24,7 +26,11 @@ using TMPro;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MenuManager : UdonSharpBehaviour
 {
+#if EIJIS_BOWLARDS
+    private readonly byte[] TIMER_VALUES = new byte[] { 0, 180, 60, 45, 30, 15 };
+#else
     private readonly byte[] TIMER_VALUES = new byte[] { 0, 60, 45, 30, 15 };
+#endif
 
     [SerializeField] private GameObject menuStart;
     [SerializeField] private GameObject menuJoinLeave;
@@ -43,9 +49,13 @@ public class MenuManager : UdonSharpBehaviour
     private Color buttonPushOutOffColor;
 #endif
 #if EIJIS_CALLSHOT
+#if EIJIS_CALL_DEFAULT_LOCKING
+    [SerializeField] private GameObject buttonCallClear;
+#else
     [SerializeField] private GameObject buttonCallLock;
     [SerializeField] private Color buttonCallLockOnColor;
     private Color buttonCallLockOffColor;
+#endif
     [SerializeField] private GameObject buttonCallSafety;
     [SerializeField] private Color buttonCallSafetyOnColor;
     private Color buttonCallSafetyOffColor;
@@ -63,11 +73,14 @@ public class MenuManager : UdonSharpBehaviour
 #if EIJIS_EXTRA_GAMES
     private Image gameModePanel;
     private Sprite basicGamesImage;
-    private Sprite extraGamesImage;
     private GameObject basicGamesButton;
     private GameObject extraGamesButton;
+    private GameObject extraGamesRotationButton;
+    private GameObject extraGamesBowlardsButton;
     private GameObject gameModeExtraBg;
     private GameObject gameModeTitleExtra;
+    [SerializeField] private Sprite gameModePanelRotation;
+    [SerializeField] private Sprite gameModePanelBowlards;
 #endif
 
     private BilliardsModule table;
@@ -105,22 +118,22 @@ public class MenuManager : UdonSharpBehaviour
             buttonPushOutOffColor = buttonPushOut.GetComponent<Image>().color;
 #endif
 #if EIJIS_CALLSHOT
+#if !EIJIS_CALL_DEFAULT_LOCKING
             buttonCallLockOffColor = buttonCallLock.GetComponent<Image>().color;
+#endif
             buttonCallSafetyOffColor = buttonCallSafety.GetComponent<Image>().color;
 #endif
 #if EIJIS_EXTRA_GAMES
             gameModePanel = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode").gameObject.GetComponent<Image>();
             basicGamesImage = gameModePanel.sprite;
-            Transform gameModeExtra = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameModeExtra");
-            if (!ReferenceEquals(null, gameModeExtra))
-            {
-                extraGamesImage = gameModeExtra.gameObject.GetComponent<Image>().sprite;
-                gameModePanel.sprite = extraGamesImage;
-            }
             Transform buttons = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/Buttons");
             if (!ReferenceEquals(null, buttons)) basicGamesButton = buttons.gameObject;
             Transform buttonsExtra = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsExtra");
             if (!ReferenceEquals(null, buttonsExtra)) extraGamesButton = buttonsExtra.gameObject;
+            Transform buttonsRotation = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsRotation");
+            if (!ReferenceEquals(null, buttonsRotation)) extraGamesRotationButton = buttonsRotation.gameObject;
+            Transform buttonsBowlards = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsBowlards");
+            if (!ReferenceEquals(null, buttonsBowlards)) extraGamesBowlardsButton = buttonsBowlards.gameObject;
             Transform bg_brown = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/BG_Brown");
             if (!ReferenceEquals(null, bg_brown)) gameModeExtraBg = bg_brown.gameObject;
             Transform gameModeTitleExtraTr = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/GameModeTitleExtra");
@@ -147,7 +160,11 @@ public class MenuManager : UdonSharpBehaviour
         _DisablePushOutMenu();
 #endif
 #if EIJIS_CALLSHOT
+#if EIJIS_CALL_DEFAULT_LOCKING
+        _DisableCallClearMenu();
+#else
         _DisableCallLockMenu();
+#endif
 #endif
         _EnableStartMenu();
 #if EIJIS_CUSTOM_GOAL_POINT
@@ -200,23 +217,31 @@ public class MenuManager : UdonSharpBehaviour
             }
         }
 #if EIJIS_EXTERNAL_SCORE_SCREEN
-        for (int i = 0; i < 2; i++)
+        if (table.networkingManager.gameStateSynced != 3)
         {
-            string teamName = i == 0 ? "[Orange]" : "[Blue]";
-            string name = playerNames[i];
-            if (name != string.Empty)
+            for (int i = 0; i < 2; i++)
             {
-                teamName = name;
-            }
-            if (table.teamsLocal)
-            {
-                name = playerNames[i + 2];
+                string teamName = i == 0 ? "[Orange]" : "[Blue]";
+                if (table.isBowlards && table.fbScoresLocal[i] < 1)
+                {
+                    teamName = " ";
+                }
+                string name = playerNames[i];
                 if (name != string.Empty)
                 {
-                    teamName += "\n" + name;
+                    teamName = name;
                 }
+                if (table.teamsLocal)
+                {
+                    name = playerNames[i + 2];
+                    if (name != string.Empty)
+                    {
+                        teamName += "\n" + name;
+                    }
+                }
+                if (!ReferenceEquals(null, table.scoreScreenRotation)) table.scoreScreenRotation.UpdateTeamName(i, teamName);
+                if (!ReferenceEquals(null, table.scoreScreenBowlards)) table.scoreScreenBowlards.UpdateTeamName(i, teamName);
             }
-            if (!ReferenceEquals(null, table.scoreScreen)) table.scoreScreen.UpdateTeamName(i, teamName);
         }
 #endif
         table.numPlayersCurrentOrange = numPlayersOrange;
@@ -247,11 +272,24 @@ public class MenuManager : UdonSharpBehaviour
         string modeName = "";
         uint mode = (uint)table.GetProgramVariable("gameModeLocal");
 #if EIJIS_EXTRA_GAMES
-        if (!ReferenceEquals(null, extraGamesImage)) gameModePanel.sprite = table.isRotation ? extraGamesImage : basicGamesImage;
-        if (!ReferenceEquals(null, basicGamesButton)) basicGamesButton.SetActive(!table.isRotation);
+        if (table.isRotation)
+        {
+            gameModePanel.sprite = gameModePanelRotation;
+        }
+        else if (table.isBowlards)
+        {
+            gameModePanel.sprite = gameModePanelBowlards;
+        }
+        else
+        {
+            gameModePanel.sprite = basicGamesImage;
+        }
+        if (!ReferenceEquals(null, basicGamesButton)) basicGamesButton.SetActive(!(table.isRotation || table.isBowlards));
         if (!ReferenceEquals(null, extraGamesButton)) extraGamesButton.SetActive(table.isRotation);
-        if (!ReferenceEquals(null, gameModeExtraBg)) gameModeExtraBg.SetActive(table.isRotation);
-        if (!ReferenceEquals(null, gameModeTitleExtra)) gameModeTitleExtra.SetActive(table.isRotation);
+        if (!ReferenceEquals(null, extraGamesRotationButton)) extraGamesRotationButton.SetActive(table.isRotation);
+        if (!ReferenceEquals(null, extraGamesBowlardsButton)) extraGamesBowlardsButton.SetActive(table.isBowlards);
+        if (!ReferenceEquals(null, gameModeExtraBg)) gameModeExtraBg.SetActive(table.isRotation || table.isBowlards);
+        if (!ReferenceEquals(null, gameModeTitleExtra)) gameModeTitleExtra.SetActive(table.isRotation || table.isBowlards);
 #endif
         Transform selection = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ModeSelection");
         Transform selectionPoint;
@@ -362,6 +400,26 @@ public class MenuManager : UdonSharpBehaviour
                 if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
+#if EIJIS_BOWLARDS
+            case BilliardsModule.GAMEMODE_BOWLARDS_10:
+                modeName = table._translations.Get("Bowlards(10)");
+                // modeName = "Bowlards";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/FrameCount10");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_BOWLARDS_5:
+                modeName = table._translations.Get("Bowlards(5)");
+                // modeName = "Bowlards";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/FrameCount5");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_BOWLARDS_1:
+                modeName = table._translations.Get("Bowlards(1)");
+                // modeName = "Bowlards";
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/FrameCount1");
+                if (!ReferenceEquals(null, selectionPoint)) table.setTransform(selectionPoint, selection, true);
+                break;
+#endif
         }
         gameModeDisplay.text = modeName;
 #if EIJIS_CUSTOM_GOAL_POINT
@@ -373,6 +431,10 @@ public class MenuManager : UdonSharpBehaviour
         {
             _DisableMenuGoalPoint();
         }
+#endif
+#if EIJIS_BOWLARDS
+        PracticeModeToggle_button.gameObject.SetActive(table.isBowlards && table.playerIDsLocal[1] == -1 && table.playerIDsLocal[3] == -1);
+        PracticeModeToggle_button.SetIsOnWithoutNotify(table.practiceModeMenuToggleLocal);
 #endif
     }
     public void _RefreshPhysics()
@@ -442,6 +504,10 @@ public class MenuManager : UdonSharpBehaviour
         SemiAutoCallToggle_button.gameObject.SetActive(table.requireCallShotLocal);
         SemiAutoCallToggle_button.SetIsOnWithoutNotify(table.semiAutoCallLocal);
 #endif
+#endif
+#if EIJIS_BOWLARDS
+        PracticeModeToggle_button.gameObject.SetActive(table.isBowlards && table.playerIDsLocal[1] == -1 && table.playerIDsLocal[3] == -1);
+        PracticeModeToggle_button.SetIsOnWithoutNotify(table.practiceModeMenuToggleLocal);
 #endif
     }
 
@@ -592,12 +658,12 @@ public class MenuManager : UdonSharpBehaviour
 #if EIJIS_EXTRA_GAMES
     public void BasicGamePage()
     {
-        if (!table.isRotation) return;
+        if (!(table.isRotation || table.isBowlards)) return;
         table._TriggerGameModeChanged(0);
     }
     public void ExtraGamePage()
     {
-        if (table.isRotation) return;
+        if (table.isRotation || table.isBowlards) return;
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_15);
     }
 #endif
@@ -631,6 +697,24 @@ public class MenuManager : UdonSharpBehaviour
     public void ModeRotation6()
     {
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_ROTATION_6);
+    }
+#endif
+#if EIJIS_BOWLARDS
+    public void ModeBowlards()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BOWLARDS_10);
+    }
+    public void FrameCount10()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BOWLARDS_10);
+    }
+    public void FrameCount5()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BOWLARDS_5);
+    }
+    public void FrameCount1()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_BOWLARDS_1);
     }
 #endif
     public void Mode4Ball()
@@ -722,6 +806,13 @@ public class MenuManager : UdonSharpBehaviour
     public void SemiAutoCallToggle()
     {
         table._TriggerSemiAutoCallChanged(SemiAutoCallToggle_button.isOn);
+    }
+#endif
+#if EIJIS_BOWLARDS
+    [SerializeField] private Toggle PracticeModeToggle_button;
+    public void PracticeModeToggle()
+    {
+        table._TriggerPracticeModeChanged(PracticeModeToggle_button.isOn);
     }
 #endif
 #endif
@@ -1131,6 +1222,17 @@ public class MenuManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
     
+#if EIJIS_CALL_DEFAULT_LOCKING
+    public void _EnableCallClearMenu()
+    {
+        buttonCallClear.SetActive(true);
+    }
+
+    public void _DisableCallClearMenu()
+    {
+        buttonCallClear.SetActive(false);
+    }
+#else
     public void _EnableCallLockMenu()
     {
         buttonCallLock.SetActive(true);
@@ -1145,6 +1247,7 @@ public class MenuManager : UdonSharpBehaviour
     {
         buttonCallLock.GetComponent<Image>().color = state ? buttonCallLockOnColor : buttonCallLockOffColor;
     }
+#endif
     
     public void _EnableCallSafetyMenu()
     {
