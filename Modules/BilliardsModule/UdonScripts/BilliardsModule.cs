@@ -4061,8 +4061,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_DEBUG_BOWLARDS
                 _LogInfo($"             isObjectiveSink = {isObjectiveSink}, isOpponentSink = {isOpponentSink}, isAnyPocketSink = {isAnyPocketSink}, ballBounced = {ballBounced}");
                 _LogInfo($"  (ballsPocketedLocal & pocketMask) = {(ballsPocketedLocal & pocketMask):x8}, pocketMask = {pocketMask:x8}");
-                _LogInfo($"  targetPocketed = {targetPocketed:x8}, targetPocketedOrig = {targetPocketedOrig:x8}");
-                _LogInfo($"  (targetPocketed & pocketMask) = {(targetPocketed & pocketMask):x8}, (targetPocketedOrig & pocketMask) = {(targetPocketedOrig & pocketMask):x8}");
+                _LogInfo($"  targetPocketed = {targetPocketed:x8}");
+                _LogInfo($"  (targetPocketed & pocketMask) = {(targetPocketed & pocketMask):x8}");
 #endif
                 if (isObjectiveSink || isOnBreakShot)
                 {
@@ -8109,7 +8109,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
         if (nowDistant == localPlayerDistant) { return; }
 #if EIJIS_DEBUG_BOWLARDS
-        _LogInfo($"EIJIS_DEBUG BilliardsModule::checkDistanceLoD() nowDistant = {nowDistant}, localPlayerDistant = {localPlayerDistant}, n.gameStateSynced = {networkingManager.gameStateSynced}, n.delayedDeserialization = {networkingManager.delayedDeserialization}");
+        // _LogInfo($"EIJIS_DEBUG BilliardsModule::checkDistanceLoD() nowDistant = {nowDistant}, localPlayerDistant = {localPlayerDistant}, n.gameStateSynced = {networkingManager.gameStateSynced}, n.delayedDeserialization = {networkingManager.delayedDeserialization}");
 #endif
         if (isPlayer)
         {
