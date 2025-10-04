@@ -3,7 +3,7 @@
 // #define DEBUG_EIJIS_MNBK_MCB
 
 #define EIJIS_MNBK_AUTOCOUNTER
-#define EIJIS_MNBK_MCB
+// #define EIJIS_MNBK_MCB
 
 using System;
 using UdonSharp;
@@ -121,8 +121,10 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         }
     }
 #endif
-#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_MCB
+#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_MNBK_MCB
     public BattleCheckMng battleCheckMng;
+#endif
     private readonly string toggleMCB_BattledName = "MCB_Battled";
     private Toggle MCB_BattledToggle;
 #endif
@@ -267,7 +269,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 
         SetButtonsEnable(!EditLocked);
 #endif
-#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_MCB
+#if EIJIS_MNBK_AUTOCOUNTER
         Transform toggleMCB_BattledTransform = this.transform.Find(toggleMCB_BattledName);
         if (ReferenceEquals(null, toggleMCB_BattledTransform))
         {
