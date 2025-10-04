@@ -8,7 +8,7 @@ namespace EijisMsVrcsaTableUtil
 {
 	public class Package
 	{
-		private static readonly string exportPackageFilePath = "CBCTable1391_bowlards20250924.unityPackage";
+		private static readonly string exportPackageFilePath = "CBCTable1391_bowlards20251004.unityPackage";
 		static readonly string[] exportFilePaths = 
 		{
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/TestPoolSence_bowlards.unity",
@@ -103,7 +103,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/UdonScripts/ScoreScreen/TeamPlayers.cs"
 		};
 		
-		[MenuItem("MS-VRCSA/eijis fork util/ExportPatchPackage_bowlards20250924", false, Int32.MaxValue)]
+		[MenuItem("MS-VRCSA/eijis fork util/ExportPatchPackage_bowlards20251004", false, Int32.MaxValue)]
 		private static void ExportPackage_Menu(MenuCommand command)
 		{
 			try
