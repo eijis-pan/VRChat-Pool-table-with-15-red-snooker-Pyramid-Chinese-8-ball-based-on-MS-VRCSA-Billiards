@@ -11,10 +11,22 @@
 #define EIJIS_10BALL
 #define EIJIS_BANKING
 
+#define EIJIS_MNBK_AUTOCOUNTER
+#define EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+// #define EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
+
+// #define EIJIS_WINNER_TEXT_HOTFIX
+
+// #define EIJIS_DEBUG_GAMESTATE_SYNC
+
 using System;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
+
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+using VRC.SDK3.Persistence;
+#endif
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class NetworkingManager : UdonSharpBehaviour
@@ -88,6 +100,9 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING
     // additional games 4 is Snooker15Red, 5 is RussianPyramid, 6-9 is 3-Cushion(2,1,0-Cushion), 10 is 10ball, 11 is Banking
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    // additional games 12 is Mnbk9ball
+#endif
     [UdonSynced][NonSerialized] public byte gameModeSynced;
 
     // the timer for the current game in seconds
@@ -140,6 +155,21 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
     [UdonSynced] [NonSerialized] public bool callShotLockSynced;
     
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    [UdonSynced] [NonSerialized] public byte inningCountSynced;
+    [UdonSynced] [NonSerialized] public byte player1ScoreSynced;
+    [UdonSynced] [NonSerialized] public byte player1SafetySynced;
+    [UdonSynced] [NonSerialized] public byte player1GoalSynced;
+    [UdonSynced] [NonSerialized] public byte player2ScoreSynced;
+    [UdonSynced] [NonSerialized] public byte player2SafetySynced;
+    [UdonSynced] [NonSerialized] public byte player2GoalSynced;
+    [UdonSynced] [NonSerialized] public byte ballDeadCountSynced;
+    
+    [UdonSynced] [NonSerialized] public bool safetyCalledSynced;
+    [UdonSynced] [NonSerialized] public bool pausedSynced;
+    // [UdonSynced] [NonSerialized] public bool messageToLateJoinerFlgSynced;
+
 #endif
     [SerializeField] private PlayerSlot playerSlot;
     private BilliardsModule table;
@@ -240,6 +270,20 @@ public class NetworkingManager : UdonSharpBehaviour
     [NonSerialized] public bool delayedDeserialization = false;
     public override void OnDeserialization()
     {
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+        table._LogInfo("EIJIS_DEBUG NetworkingManager::OnDeserialization()");
+        table.graphicsManager.dumpWinnerText();
+#endif
+#if EIJIS_WINNER_TEXT_HOTFIX
+        if (!ReferenceEquals(null, table.tmpWinnerText))
+        {
+            table.graphicsManager.setWinnerText(table.tmpWinnerText);
+            table.tmpWinnerText = null;
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_DEBUG_GAMESTATE_SYNC
+            table.graphicsManager.dumpWinnerText();
+#endif
+        }
+#endif
         delayedDeserialization = false;
 
         if (table.localPlayerDistant)
@@ -280,10 +324,53 @@ public class NetworkingManager : UdonSharpBehaviour
         {
             playerIDsSynced[i] = -1;
         }
+#if EIJIS_MNBK_AUTOCOUNTER
+        pausedSynced = false;
+#endif
 
         bufferMessages(true);
     }
 
+#if EIJIS_MNBK_AUTOCOUNTER
+    public void _OnGameNextBreak(uint defaultBallsPocketed, Vector3[] ballPositions, uint winnerId, bool startOnPause)
+    {
+        stateIdSynced++;
+
+        gameStateSynced = (byte)(gameStateSynced == 2 ? 4 : 2);
+        //winningTeamSynced = (byte)winnerId;
+
+        //gameStateSynced = 2;
+        ballsPocketedSynced = defaultBallsPocketed;
+#if EIJIS_CALLSHOT
+        targetPocketedSynced = 0;
+        otherPocketedSynced = 0;
+        calledBallsSynced = 0;
+        pointPocketsSynced = 0;
+#endif
+        foulStateSynced = 1;
+        colorTurnSynced = true;// re-used to track if it's the break
+        turnStateSynced = 0; // 2
+#if EIJIS_CALLSHOT
+        isTableOpenSynced = !table.requireCallShotLocal;
+#else
+        isTableOpenSynced = true;
+#endif
+        teamIdSynced = (byte)winnerId;
+        fourBallCueBallSynced = 0;
+        cueBallVSynced = Vector3.zero;
+        cueBallWSynced = Vector3.zero;
+        timerStartSynced = Networking.GetServerTimeInMilliseconds();
+        Array.Copy(ballPositions, ballsPSynced, BilliardsModule.MAX_BALLS);
+        Array.Clear(fourBallScoresSynced, 0, 2);
+
+        pausedSynced = startOnPause;
+        safetyCalledSynced = false;
+        updateScoreFromAdjustOffsets();
+
+        bufferMessages(false);
+    }
+
+#endif
 #if EIJIS_PUSHOUT || EIJIS_CALLSHOT
     public void _OnSimulationEnded(Vector3[] ballsP, uint ballsPocketed
 #if EIJIS_CALLSHOT
@@ -341,6 +428,14 @@ public class NetworkingManager : UdonSharpBehaviour
         pointPocketsSynced = 0;
         callShotLockSynced = false;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_CALLSHOT
+        safetyCalledSynced = table.requireCallShotLocal;
+#else
+        safetyCalledSynced = false;
+#endif
+        updateScoreFromAdjustOffsets();
+#endif        
 
         bufferMessages(false);
     }
@@ -410,6 +505,14 @@ public class NetworkingManager : UdonSharpBehaviour
         pointPocketsSynced = 0;
         callShotLockSynced = false;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_CALLSHOT
+        safetyCalledSynced = table.requireCallShotLocal;
+#else
+        safetyCalledSynced = false;
+#endif
+        updateScoreFromAdjustOffsets();
+#endif        
 
         bufferMessages(false);
     }
@@ -428,6 +531,14 @@ public class NetworkingManager : UdonSharpBehaviour
         pointPocketsSynced = 0;
         callShotLockSynced = false;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_CALLSHOT
+        safetyCalledSynced = table.requireCallShotLocal;
+#else
+        safetyCalledSynced = false;
+#endif
+        updateScoreFromAdjustOffsets();
+#endif        
 
         bufferMessages(false);
     }
@@ -467,6 +578,9 @@ public class NetworkingManager : UdonSharpBehaviour
 #else
         Array.Copy(ballsP, ballsPSynced, MAX_BALLS);
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        updateScoreFromAdjustOffsets();
+#endif        
 
         bufferMessages(false);
     }
@@ -482,6 +596,13 @@ public class NetworkingManager : UdonSharpBehaviour
             playerIDsSynced[i] = -1;
         }
         playerIDsSynced[0] = Networking.LocalPlayer.playerId;
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+        byte gaolPoint;
+        if (PlayerData.TryGetByte(Networking.LocalPlayer, table.MNBK_GOAL_POINT_PERSISTENCE_KEY, out gaolPoint))
+        {
+            player1GoalSynced = gaolPoint;
+        }
+#endif
 
         bufferMessages(false);
     }
@@ -581,12 +702,29 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_PUSHOUT
         pushOutStateSynced = table.PUSHOUT_BEFORE_BREAK;
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        safetyCalledSynced = false;
+#endif
 
         bufferMessages(false);
     }
 
     public int _OnJoinTeam(int teamId)
     {
+#if EIJIS_MNBK_AUTOCOUNTER && EIJIS_MNBK_GOAL_POINT_PERSISTENCE
+        byte gaolPoint;
+        if (PlayerData.TryGetByte(Networking.LocalPlayer, table.MNBK_GOAL_POINT_PERSISTENCE_KEY, out gaolPoint))
+        {
+            if (teamId == 0 && (playerIDsSynced[2] == -1))
+            {
+                player1GoalSynced = gaolPoint;
+            }
+            else if (teamId == 1 && (playerIDsSynced[3] == -1))
+            {
+                player2GoalSynced = gaolPoint;
+            }
+        }
+#endif
         if (teamId == 0)
         {
             if (playerIDsSynced[0] == -1)
@@ -642,6 +780,9 @@ public class NetworkingManager : UdonSharpBehaviour
         {
             calledBalls = 0;
         }
+#if EIJIS_MNBK_AUTOCOUNTER
+        safetyCalledSynced = !(enabled && (0 != pointPocketsSynced));
+#endif
 
         calledBallsSynced = calledBalls;
         
@@ -675,6 +816,9 @@ public class NetworkingManager : UdonSharpBehaviour
         {
             pointPockets = 0;
         }
+#if EIJIS_MNBK_AUTOCOUNTER
+        safetyCalledSynced = !(pocketEnabled && (0 != calledBallsSynced));
+#endif
 
         pointPocketsSynced = pointPockets;
         
@@ -801,6 +945,16 @@ public class NetworkingManager : UdonSharpBehaviour
 
     public void _OnGameModeChanged(uint newGameMode)
     {
+#if EIJIS_MNBK_AUTOCOUNTER
+        if (newGameMode != BilliardsModule.GAMEMODE_MNBK9BALL && gameModeSynced == BilliardsModule.GAMEMODE_MNBK9BALL)
+        {
+            player1GoalSynced = player2GoalSynced = 0;
+        }
+        else if (newGameMode == BilliardsModule.GAMEMODE_MNBK9BALL && gameModeSynced != BilliardsModule.GAMEMODE_MNBK9BALL)
+        {
+            player1GoalSynced = player2GoalSynced = 21;
+        }
+#endif
         gameModeSynced = (byte)newGameMode;
 
         bufferMessages(false);
@@ -863,6 +1017,52 @@ public class NetworkingManager : UdonSharpBehaviour
         }
     }
 
+#if EIJIS_MNBK_AUTOCOUNTER
+    public void _OnSkillLevelChanged(uint teamId, uint skillLevel)
+    {
+        byte point = table.MNBK_SKILLLEVEL_POINTS[skillLevel];
+        if (teamId == 0)
+        {
+            player1GoalSynced = point;
+        }
+        else //if (teamId == 1)
+        {
+            player2GoalSynced = point;
+        }
+
+        bufferMessages(false);
+    }
+    
+    public void _OnSafetyCallChanged(bool newState)
+    {
+        safetyCalledSynced = newState;
+
+        updateScoreFromAdjustOffsets();
+
+        bufferMessages(false);
+    }
+
+    public void _OnPauseStateChanged(bool newState)
+    {
+        pausedSynced = newState;
+        timerStartSynced = Networking.GetServerTimeInMilliseconds();
+
+        updateScoreFromAdjustOffsets();
+
+        bufferMessages(false);
+    }
+
+#endif
+#if EIJIS_MNBK_DELAY_SYNC_TO_WORLD_LATE_JOINER
+    public void _RequestBufferMessages()
+    {
+#if EIJIS_DEBUG_GAMESTATE_SYNC
+        table._LogInfo("EIJIS_DEBUG NetworkingManager::_RequestBufferMessages()");
+#endif
+        bufferMessages(false);
+    }
+    
+#endif
     public void _ForceLoadFromState
     (
         int stateIdLocal,
@@ -1490,7 +1690,60 @@ public class NetworkingManager : UdonSharpBehaviour
 
     public override void OnPlayerLeft(VRCPlayerApi player)
     {
+#if EIJIS_ISSUE_FIX
+        if (ReferenceEquals(null,Networking.LocalPlayer)) return;
+#endif
         if (!Networking.LocalPlayer.IsOwner(gameObject)) return;
         removePlayer(player.playerId);
     }
+#if EIJIS_MNBK_AUTOCOUNTER
+    
+    public void updateScoreFromAdjustOffsets()
+    {
+        if (!table.isMnbk9Ball)
+        {
+            return;
+        }
+
+        int[] values =
+        {
+            inningCountSynced,
+            player1ScoreSynced,
+            player1SafetySynced,
+            player1GoalSynced,
+            player2ScoreSynced,
+            player2SafetySynced,
+            player2GoalSynced,
+            ballDeadCountSynced
+        };
+
+
+        int[] offsets = table.getScoreAdjustOffsets();
+        if (offsets.Length < values.Length) return;
+        
+        int i;
+        for (i = 0; i < offsets.Length; i++)
+        {
+            values[i] += offsets[i];
+            if (values[i] < 0)
+            {
+                values[i] = 0;
+            }
+            else if (255 < values[i])
+            {
+                values[i] = 255;
+            }
+        }
+
+        i = 0;
+        inningCountSynced = (byte)values[i++];
+        player1ScoreSynced = (byte)values[i++];
+        player1SafetySynced = (byte)values[i++];
+        player1GoalSynced = (byte)values[i++];
+        player2ScoreSynced = (byte)values[i++];
+        player2SafetySynced = (byte)values[i++];
+        player2GoalSynced = (byte)values[i++];
+        ballDeadCountSynced = (byte)values[i++];
+    }
+#endif
 }

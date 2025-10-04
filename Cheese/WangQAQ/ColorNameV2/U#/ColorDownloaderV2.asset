@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: ColorDownloaderV2
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: f6c70a28d93671b4789b32871637e343,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 2e9280b2878a6d84ebca5a1bb66d63b8,
     type: 2}
   udonAssembly: 
   assemblyError: 
