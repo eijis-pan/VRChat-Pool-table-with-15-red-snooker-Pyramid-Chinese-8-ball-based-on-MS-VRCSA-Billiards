@@ -2363,7 +2363,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #endif
 #endif
-#if EIJIS_DEBUG_BOWLARDS
+#if EIJIS_BOWLARDS
         denyBalls = 0x0u;
         graphicsManager._SetBallsDenyMark(denyBalls);
 #endif
@@ -8101,8 +8101,8 @@ public class BilliardsModule : UdonSharpBehaviour
     {
         bool nowDistant = (Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position) > LoDDistance) && !noLOD
 // #if EIJIS_ROTATION || EIJIS_DEBUG_BOWLARDS // ← この指定は間違っている。正しくは EIJIS_BOWLARDS これが不具合の原因かも
-// #if EIJIS_ROTATION || EIJIS_BOWLARDS
-#if EIJIS_ROTATION // ← この状態にして不具合の再現を待つ
+#if EIJIS_ROTATION || EIJIS_BOWLARDS
+// #if EIJIS_ROTATION // ← この状態にして不具合の再現を待つ
         && !((networkingManager.gameStateSynced == 2 || networkingManager.gameStateSynced == 4) && Networking.IsOwner(networkingManager.gameObject));
 #else
         && !(networkingManager.gameStateSynced == 2 && Networking.IsOwner(networkingManager.gameObject));
