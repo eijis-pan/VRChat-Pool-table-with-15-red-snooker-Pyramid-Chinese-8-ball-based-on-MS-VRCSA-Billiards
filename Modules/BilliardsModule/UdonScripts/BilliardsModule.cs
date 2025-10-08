@@ -6868,9 +6868,9 @@ public void _RedrawDebugger() { }
     {
 #if EIJIS_LOG_PREFIX_COLOR_OFF
 #if EIJIS_TABLE_LABEL
-        Debug.Log("[BilliardsModule" + logLabel + "] " + ln);
+        Debug.Log("[BilliardsModule" + logLabel + "] " + stripTag(ln));
 #else
-        Debug.Log("[BilliardsModule] " + ln);
+        Debug.Log("[BilliardsModule] " + stripTag(ln));
 #endif
 #else
 #if EIJIS_TABLE_LABEL
