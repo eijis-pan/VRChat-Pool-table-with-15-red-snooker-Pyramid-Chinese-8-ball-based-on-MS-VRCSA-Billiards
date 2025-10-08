@@ -771,8 +771,8 @@ public class BilliardsModule : UdonSharpBehaviour
         networkingManager.gameModeSynced = (byte)gameModeLocal;
         networkingManager.tableModelSynced = (byte)tableModelLocal;
         networkingManager.timerSynced = (byte)timerLocal;
-        networkingManager.player1GoalSynced = (byte)player1GoalLocal;
-        networkingManager.player2GoalSynced = (byte)player2GoalLocal;
+        networkingManager.player1GoalSynced = (ushort)player1GoalLocal;
+        networkingManager.player2GoalSynced = (ushort)player2GoalLocal;
 #endif
         practiceManager._Init(this);
         repositionManager._Init(this);
@@ -1387,10 +1387,10 @@ public class BilliardsModule : UdonSharpBehaviour
             networkingManager.inningCountSynced = 1;
             networkingManager.player1ScoreSynced = 0;
             networkingManager.player1SafetySynced = 0;
-            networkingManager.player1GoalSynced = (byte)player1GoalLocal;
+            networkingManager.player1GoalSynced = (ushort)player1GoalLocal;
             networkingManager.player2ScoreSynced = 0;
             networkingManager.player2SafetySynced = 0;
-            networkingManager.player2GoalSynced = (byte)player2GoalLocal;
+            networkingManager.player2GoalSynced = (ushort)player2GoalLocal;
             networkingManager.ballDeadCountSynced = 0;
         }
 #endif
@@ -2224,7 +2224,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_MNBK_GOAL_POINT_PERSISTENCE
         if (isMnbk9Ball && ((localTeamId == 0 && playerIDsLocal[2] == -1)||(localTeamId == 1 && playerIDsLocal[3] == -1)))
         {
-            PlayerData.SetByte(MNBK_GOAL_POINT_PERSISTENCE_KEY, (byte)((localTeamId == 0) ? player1GoalLocal : player2GoalLocal));
+            PlayerData.SetUShort(MNBK_GOAL_POINT_PERSISTENCE_KEY, (ushort)((localTeamId == 0) ? player1GoalLocal : player2GoalLocal));
         }
 #endif
 #endif
@@ -2804,13 +2804,13 @@ public class BilliardsModule : UdonSharpBehaviour
 
     private void onRemoteMnbkCountersChanged(
         byte inningCountSynced,
-        byte player1ScoreSynced,
+        ushort player1ScoreSynced,
         byte player1SafetySynced,
-        byte player1GoalSynced,
-        byte player2ScoreSynced,
+        ushort player1GoalSynced,
+        ushort player2ScoreSynced,
         byte player2SafetySynced,
-        byte player2GoalSynced,
-        byte ballDeadCountSynced,
+        ushort player2GoalSynced,
+        ushort ballDeadCountSynced,
         bool safetyCalledChanged
         )
     {
@@ -3725,11 +3725,17 @@ public class BilliardsModule : UdonSharpBehaviour
 
                     if (teamIdLocal == 0)
                     {
-                        networkingManager.player1SafetySynced += (byte)(safetyCountup ? 1 : 0);
+                        if (networkingManager.player1SafetySynced < 255)
+                        {
+                            networkingManager.player1SafetySynced += (byte)(safetyCountup ? 1 : 0);
+                        }
                     }
                     else
                     {
-                        networkingManager.player2SafetySynced += (byte)(safetyCountup ? 1 : 0);
+                        if (networkingManager.player2SafetySynced < 255)
+                        {
+                            networkingManager.player2SafetySynced += (byte)(safetyCountup ? 1 : 0);
+                        }
                     }
 
                     if (ignoreBrakeAceLocal)
@@ -3747,14 +3753,27 @@ public class BilliardsModule : UdonSharpBehaviour
                         }
                     }
 
-                    networkingManager.ballDeadCountSynced += (byte)deadCountUp;
+                    networkingManager.ballDeadCountSynced += (ushort)deadCountUp;
+                    if (1023 < networkingManager.ballDeadCountSynced)
+                    {
+                        networkingManager.ballDeadCountSynced = 1023;
+                    }
+                    
                     if (teamIdLocal == 0)
                     {
-                        networkingManager.player1ScoreSynced += (byte)scoreUp;
+                        networkingManager.player1ScoreSynced += (ushort)scoreUp;
+                        if (1023 < networkingManager.player1ScoreSynced)
+                        {
+                            networkingManager.player1ScoreSynced = 1023;
+                        }
                     }
                     else
                     {
-                        networkingManager.player2ScoreSynced += (byte)scoreUp;
+                        networkingManager.player2ScoreSynced += (ushort)scoreUp;
+                        if (1023 < networkingManager.player2ScoreSynced)
+                        {
+                            networkingManager.player2ScoreSynced = 1023;
+                        }
                     }
 #if EIJIS_MNBK_SCORE_ERROR_DETECTION
                     _LogInfo($"_TriggerSimulationEnded after  p1score={networkingManager.player1ScoreSynced} p2score={networkingManager.player2ScoreSynced} dead={networkingManager.ballDeadCountSynced}");
@@ -4905,7 +4924,10 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             if (teamIdLocal != 0 && teamIdLocal != winner)
             {
-                networkingManager.inningCountSynced++;
+                if (networkingManager.inningCountSynced < 255)
+                {
+                    networkingManager.inningCountSynced++;
+                }
             }
             initializeRack();
 #if EIJIS_MANY_BALLS
@@ -4954,7 +4976,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_MNBK_AUTOCOUNTER
         if (isMnbk9Ball && teamIdLocal != 0)
         {
-            networkingManager.inningCountSynced++;
+            if (networkingManager.inningCountSynced < 255)
+            {
+                networkingManager.inningCountSynced++;
+            }
         }
 #endif
         networkingManager._OnTurnPass(teamIdLocal ^ 0x1u);
@@ -4974,7 +4999,10 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_MNBK_AUTOCOUNTER
         if (isMnbk9Ball && teamIdLocal != 0)
         {
-            networkingManager.inningCountSynced++;
+            if (networkingManager.inningCountSynced < 255)
+            {
+                networkingManager.inningCountSynced++;
+            }
         }
 #endif
         networkingManager._OnTurnFoul(teamIdLocal ^ 0x1u, Scratch, objBlocked);

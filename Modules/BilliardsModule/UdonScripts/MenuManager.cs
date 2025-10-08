@@ -338,7 +338,7 @@ public class MenuManager : UdonSharpBehaviour
         if (!ReferenceEquals(null, skillLevelOrangeDisplay))
         {
             int teamId = 0;
-            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (byte)(table.player1GoalLocal));
+            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (ushort)(table.player1GoalLocal));
             selectedSkillLevel[teamId] = index == -1 ? 0 : (uint)index;
             if (index > -1)
             {
@@ -353,7 +353,7 @@ public class MenuManager : UdonSharpBehaviour
         if (!ReferenceEquals(null, skillLevelBlueDisplay))
         {
             int teamId = 1;
-            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (byte)(table.player2GoalLocal));
+            int index = Array.IndexOf(table.MNBK_SKILLLEVEL_POINTS, (ushort)(table.player2GoalLocal));
             selectedSkillLevel[teamId] = index == -1 ? 0 : (uint)index;
             if (index > -1)
             {

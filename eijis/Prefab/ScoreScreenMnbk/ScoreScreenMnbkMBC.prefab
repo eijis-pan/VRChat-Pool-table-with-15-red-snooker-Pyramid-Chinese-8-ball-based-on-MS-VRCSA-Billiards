@@ -636,6 +636,11 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 11400000, guid: 7c871cd61c0764448b02d20b188c1d96,
         type: 2}
+    - target: {fileID: 1131595034589814379, guid: 68a01cb455ba4de44b55d7532ebee7dd,
+        type: 3}
+      propertyPath: m_PresetInfoIsWorld
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1661849477701692522, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}
       propertyPath: serializationData.Prefab
@@ -963,16 +968,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_SizeDelta.y
       value: 400
-      objectReference: {fileID: 0}
-    - target: {fileID: 4244772754994611638, guid: 68a01cb455ba4de44b55d7532ebee7dd,
-        type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.0019999996
-      objectReference: {fileID: 0}
-    - target: {fileID: 4244772754994611638, guid: 68a01cb455ba4de44b55d7532ebee7dd,
-        type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.0019999996
       objectReference: {fileID: 0}
     - target: {fileID: 4244772754994611638, guid: 68a01cb455ba4de44b55d7532ebee7dd,
         type: 3}

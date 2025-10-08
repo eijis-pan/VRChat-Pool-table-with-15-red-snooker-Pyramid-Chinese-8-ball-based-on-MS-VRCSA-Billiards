@@ -220,6 +220,44 @@ public class PlayerRow : UdonSharpBehaviour
         return new[] { point, shotCount, safeNoPocketShotCount, scratchCount, pocketBallCount, invalidPocketBallCount };
     }
 
+    public void DecodeSyncValue_MNBK(uint value)
+    {
+        int safeNoPocketShotCount = (int)((value >> 24) & 0xFFu);
+        int shotCount = (int)((value >> 12) & 0x3FFu); // 0xFFFu);
+        int point = (int)((value >> 0) & 0xFFFu);
+        if (scoreSigned[Array.IndexOf(scoreTexts, pointText)])
+        {
+            uint u = (value >> 0) & 0x7FFu; // 0x1FFu;
+            if (0 < ((value >> 0) & 0x800u)) // 0xE00u))
+            {
+                u |= 0xFFFF800u; // 0xFFFFFE00u;
+                u = ~u;
+                point = 0 - ((int)u + 1);
+            }
+            else
+            {
+                point = (int)u;
+            }
+        }
+
+        int scratchCount = 0;
+        int pocketBallCount = 0;
+        int invalidPocketBallCount = 0;
+                
+#if TKCH_DEBUG_SCORE
+        table._Log($"TKCH PlayerRow::DecodeSyncValue_MNBK [{GetInstanceID()}] point => {point}, shotCount => {shotCount}, safeNoPocketShotCount => {safeNoPocketShotCount}");
+#endif
+
+        if (0 <= Array.IndexOf(scoreTexts, pointText)) scores[Array.IndexOf(scoreTexts, pointText)] = point; // - 127;
+        if (0 <= Array.IndexOf(scoreTexts, shotCountText)) scores[Array.IndexOf(scoreTexts, shotCountText)] = shotCount;
+        if (0 <= Array.IndexOf(scoreTexts, safeNoPocketShotCountText)) scores[Array.IndexOf(scoreTexts, safeNoPocketShotCountText)] = safeNoPocketShotCount;
+        if (0 <= Array.IndexOf(scoreTexts, scratchCountText)) scores[Array.IndexOf(scoreTexts, scratchCountText)] = scratchCount;
+        if (0 <= Array.IndexOf(scoreTexts, pocketBallCountText)) scores[Array.IndexOf(scoreTexts, pocketBallCountText)] = pocketBallCount;
+        if (0 <= Array.IndexOf(scoreTexts, invalidPocketBallCountText)) scores[Array.IndexOf(scoreTexts, invalidPocketBallCountText)] = invalidPocketBallCount;
+
+        UpdateText();
+    }
+
     // private void Start()
     public void Init()
     {
@@ -439,6 +477,25 @@ public class PlayerRow : UdonSharpBehaviour
         return scoreSyncValue;
     }
     
+    public uint EncodeScoreParams_MNBK(int point, int shotCount, int safeNoPocketShotCount)
+    {
+        uint scoreSyncValue = 0x0u;
+        scoreSyncValue |= (uint)((safeNoPocketShotCount & 0xFFu) << 24);
+        scoreSyncValue |= (uint)((shotCount & 0xFFFu) << 12);
+        if (scoreSigned[Array.IndexOf(scoreTexts, pointText)])
+        {
+            scoreSyncValue |= (uint)(
+                point & 0x7FFu | (point < 0 ? 0x80u : 0x0u)
+            ) << 0;
+        }
+        else
+        {
+            scoreSyncValue |= (uint)(point & 0xFFFu) << 0;
+        }
+        
+        return scoreSyncValue;
+    }
+
     /*
     public override void OnDeserialization()
     {

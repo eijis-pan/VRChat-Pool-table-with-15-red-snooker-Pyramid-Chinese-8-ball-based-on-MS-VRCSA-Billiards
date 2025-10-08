@@ -158,13 +158,13 @@ public class NetworkingManager : UdonSharpBehaviour
 #endif
 #if EIJIS_MNBK_AUTOCOUNTER
     [UdonSynced] [NonSerialized] public byte inningCountSynced;
-    [UdonSynced] [NonSerialized] public byte player1ScoreSynced;
+    [UdonSynced] [NonSerialized] public ushort player1ScoreSynced;
     [UdonSynced] [NonSerialized] public byte player1SafetySynced;
-    [UdonSynced] [NonSerialized] public byte player1GoalSynced;
-    [UdonSynced] [NonSerialized] public byte player2ScoreSynced;
+    [UdonSynced] [NonSerialized] public ushort player1GoalSynced;
+    [UdonSynced] [NonSerialized] public ushort player2ScoreSynced;
     [UdonSynced] [NonSerialized] public byte player2SafetySynced;
-    [UdonSynced] [NonSerialized] public byte player2GoalSynced;
-    [UdonSynced] [NonSerialized] public byte ballDeadCountSynced;
+    [UdonSynced] [NonSerialized] public ushort player2GoalSynced;
+    [UdonSynced] [NonSerialized] public ushort ballDeadCountSynced;
     
     [UdonSynced] [NonSerialized] public bool safetyCalledSynced;
     [UdonSynced] [NonSerialized] public bool pausedSynced;
@@ -1697,6 +1697,18 @@ public class NetworkingManager : UdonSharpBehaviour
         removePlayer(player.playerId);
     }
 #if EIJIS_MNBK_AUTOCOUNTER
+
+    private Type[] scoreVariableTypes = new[]
+    {
+        typeof(byte),
+        typeof(ushort),
+        typeof(byte),
+        typeof(ushort),
+        typeof(ushort),
+        typeof(byte),
+        typeof(ushort),
+        typeof(ushort)
+    };
     
     public void updateScoreFromAdjustOffsets()
     {
@@ -1729,21 +1741,28 @@ public class NetworkingManager : UdonSharpBehaviour
             {
                 values[i] = 0;
             }
-            else if (255 < values[i])
+            else
             {
-                values[i] = 255;
+                if (scoreVariableTypes[i] == typeof(byte) && 255 < values[i])
+                {
+                    values[i] = 255;
+                }
+                else if (scoreVariableTypes[i] == typeof(ushort) && 0xFFFF < values[i])
+                {
+                    values[i] = 0xFFFF;
+                }
             }
         }
 
         i = 0;
         inningCountSynced = (byte)values[i++];
-        player1ScoreSynced = (byte)values[i++];
+        player1ScoreSynced = (ushort)values[i++];
         player1SafetySynced = (byte)values[i++];
-        player1GoalSynced = (byte)values[i++];
-        player2ScoreSynced = (byte)values[i++];
+        player1GoalSynced = (ushort)values[i++];
+        player2ScoreSynced = (ushort)values[i++];
         player2SafetySynced = (byte)values[i++];
-        player2GoalSynced = (byte)values[i++];
-        ballDeadCountSynced = (byte)values[i++];
+        player2GoalSynced = (ushort)values[i++];
+        ballDeadCountSynced = (ushort)values[i];
     }
 #endif
 }

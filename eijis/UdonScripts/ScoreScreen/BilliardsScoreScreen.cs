@@ -38,6 +38,9 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     private bool EditLocked = true;
 
     [UdonSynced(UdonSyncMode.None)]
+    private bool ExCountUpDownToggleEnabled = false;
+
+    [UdonSynced(UdonSyncMode.None)]
     private bool AutoCountMode = true;
 
     // [UdonSynced(UdonSyncMode.None)]
@@ -46,6 +49,9 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     private readonly string editLockName = "EditLock";
     private Toggle EditLockToggle;
     
+    private readonly string ExCountUpDownName = "ExCountUpDown";
+    private Toggle ExCountUpDownToggle;
+
     private GameObject AutoCount;
     private readonly string autoCountName = "AutoCount";
     private Toggle AutoCountToggle;
@@ -73,19 +79,22 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
     // private GameObject CountUpDown;
     // private readonly string countUpDownName = "CountUpDown";
     
+    private GameObject CountUpDownEx;
+    private readonly string countUpDownNameEx = "CountUpDownEx";
+
     [UdonSynced(UdonSyncMode.None)] private byte editCounterIndex;
 
-    [UdonSynced(UdonSyncMode.None)] private byte inningCountOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player1ScoreOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player1SafetyOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player1GoalOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player2ScoreOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player2SafetyOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte player2GoalOffset;
-    [UdonSynced(UdonSyncMode.None)] private byte ballDeadCountOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort inningCountOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player1ScoreOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player1SafetyOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player1GoalOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player2ScoreOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player2SafetyOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort player2GoalOffset;
+    [UdonSynced(UdonSyncMode.None)] private ushort ballDeadCountOffset;
     
     private string[] counterNames;
-    private byte[] counterOffsets;
+    private ushort[] counterOffsets;
     private PlayerRow[] editCounterIndexToPlayerRow;
     private int[] editCounterIndexToColIndex;
     
@@ -113,7 +122,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
             for (int i = 0; i < counterOffsets.Length; i++)
             {
                 int unsigned = counterOffsets[i];
-                int offsetValue = (127 < unsigned) ? -(256 - unsigned) : unsigned;
+                int offsetValue = (0x7FFF < unsigned) ? -(0x10000 - unsigned) : unsigned;
                 offsets[i] = offsetValue;
             }
 
@@ -191,6 +200,17 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
             EditLockToggle = editLockTransform.GetComponentInChildren<Toggle>();
         }
 
+        Transform exCountUpDownTransform = this.transform.Find(ExCountUpDownName);
+        if (ReferenceEquals(null, exCountUpDownTransform))
+        {
+            Debug.Log($"{ExCountUpDownName} Transform not found.");
+        }
+        else
+        {
+            ExCountUpDownToggle = exCountUpDownTransform.GetComponentInChildren<Toggle>();
+            ExCountUpDownToggle.SetIsOnWithoutNotify(ExCountUpDownToggleEnabled);
+        }
+
         Transform autoCountTransform = this.transform.Find(autoCountName);
         if (ReferenceEquals(null, autoCountTransform))
         {
@@ -266,6 +286,9 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 
         // Transform countUpDownNameTransform = this.transform.Find(countUpDownName);
         // CountUpDown = countUpDownNameTransform.gameObject;
+
+        Transform countUpDownExTransform = editSelectionTransform.Find(countUpDownNameEx);
+        CountUpDownEx = countUpDownExTransform.gameObject;
 
         SetButtonsEnable(!EditLocked);
 #endif
@@ -383,6 +406,16 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         }
 
         return scoreSyncRows[0].EncodeScoreParams_Frame5(totalPoint, scores);
+    }
+
+    public uint EncodeScoreParams_MNBK(int point, int shotCount, int safeNoPocketShotCount)
+    {
+        if (scoreSyncRows.Length <= 0)
+        {
+            return 0xDEADBEAFu;
+        }
+
+        return scoreSyncRows[0].EncodeScoreParams_MNBK(point, shotCount, safeNoPocketShotCount);
     }
 
     public void DecodeScoreSyncValues(uint[] scoreSyncValues)
@@ -521,6 +554,22 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         // }
     }
 
+    public void DecodeScoreSyncValues_MNBK(uint[] scoreSyncValues)
+    {
+#if TKCH_DEBUG_SCORE
+        table._Log("TKCH BilliardsScoreScreen::DecodeScoreSyncValues_MNBK()");
+#endif
+        for (int i = 0, j = 0; i < scoreSyncRows.Length; i++)
+        {
+            if (ReferenceEquals(null, scoreSyncRows[i]))
+            {
+                continue;
+            }
+            scoreSyncRows[i].DecodeSyncValue_MNBK(scoreSyncValues[j]);
+            j++;
+        }
+    }
+    
 #if EIJIS_MNBK_AUTOCOUNTER
     public override void OnDeserialization()
     {
@@ -529,15 +578,18 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 #endif
 
         EditLockToggle.isOn = EditLocked;
+        ExCountUpDownToggle.isOn = ExCountUpDownToggleEnabled;
         EditButtonPanel.SetActive(EditLockToggle.interactable && !EditLocked);
         if (EditLockToggle.interactable && !EditLocked && editCounterIndex < 8)
         {
             EditSelection.SetActive(true);
+            CountUpDownEx.SetActive(ExCountUpDownToggleEnabled);
             editSelectionUpdate();
         }
         else
         {
             EditSelection.SetActive(false);
+            CountUpDownEx.SetActive(false);
         }
 
         SyncValueToOffsetArray();
@@ -845,10 +897,10 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         // }
 
         uint[] values = new uint[3];
-        values[0] = EncodeScoreParams_Mini(player1Score, player1Goal, 0, player1Safety);
-        values[1] = EncodeScoreParams_Mini(player2Score, player2Goal, 0, player2Safety);
-        values[2] = EncodeScoreParams_Mini(ballDeadCount, 0, 0, inningCount);
-        DecodeScoreSyncValues_Mini(values);
+        values[0] = EncodeScoreParams_MNBK(player1Score, player1Goal, player1Safety);
+        values[1] = EncodeScoreParams_MNBK(player2Score, player2Goal, player2Safety);
+        values[2] = EncodeScoreParams_MNBK(ballDeadCount, 0, inningCount);
+        DecodeScoreSyncValues_MNBK(values);
         // footerRow.SetTextByColIndex("Inning →", 1);
     }
 
@@ -932,6 +984,10 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         EditButtonPanel.SetActive(enable);
         EditSelection.SetActive(enable);
         // CountUpDown.SetActive(enable);
+        ExCountUpDownToggle.gameObject.transform.parent.gameObject.SetActive(enable);
+        ExCountUpDownToggleEnabled &= enable;
+        ExCountUpDownToggle.SetIsOnWithoutNotify(ExCountUpDownToggleEnabled);
+        CountUpDownEx.SetActive(ExCountUpDownToggleEnabled);
     }
     
     public void ToggleButtonsEnable()
@@ -952,6 +1008,19 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
             // AutoCount.SetActive(!EditLocked);
         }
 
+        Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        RequestSerialization();
+    }
+
+    public void ExCountUpDownToggleEnable()
+    {
+#if DEBUG_EIJIS_MNBK_AUTOCOUNTER
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::ExCountUpDownToggleEnable() ExCountUpDownToggleEnabled={ExCountUpDownToggleEnabled}, isOn={ExCountUpDownToggle.isOn}");
+#endif
+        if (!ReferenceEquals(null, ExCountUpDownToggle) && ExCountUpDownToggle.isOn == ExCountUpDownToggleEnabled) return;
+
+        ExCountUpDownToggleEnabled = !ExCountUpDownToggleEnabled;
+        CountUpDownEx.SetActive(ExCountUpDownToggleEnabled);
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
         RequestSerialization();
     }
@@ -1222,24 +1291,55 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
         int unsigned = counterOffsets[editCounterIndex];
-        int offsetValue = (127 < unsigned) ? -(256 - unsigned) : unsigned;
+        int offsetValue = (0x7FFF < unsigned) ? -(0x10000 - unsigned) : unsigned;
         offsetValue += modify;
-        offsetValue = 127 < offsetValue ? 127 : (offsetValue < -128 ? -128 : offsetValue);
-        unsigned = (offsetValue < 0) ? offsetValue + 256 : offsetValue;
-        counterOffsets[editCounterIndex] = (byte)unsigned;
-        OffsetArrayToSyncValue();
+        offsetValue = 0x7FFF < offsetValue ? 0x7FFF : (offsetValue < -0x1000 ? -0x1000 : offsetValue);
 #if DEBUG_EIJIS_MNBK_AUTOCOUNTER
         table._Log($"  editCounterIndex={editCounterIndex} (counterName {counterNames[editCounterIndex]})");
         dumpMnbkScoreOffset();
         dumpMnbkScoreOffsetInArray();
 #endif
-        RequestSerialization();
 
         PlayerRow editRow = editCounterIndexToPlayerRow[editCounterIndex];
         int editColIndex = editCounterIndexToColIndex[editCounterIndex];
-        // int value = editRow.GetScoreByColIndex(editColIndex);
+        int value = editRow.GetScoreByColIndex(editColIndex);
+        if (editColIndex < 2)
+        {
+            if (1023 < value + offsetValue)
+            {
+                offsetValue = 1023 - value;
+            }
+        }
+        else
+        {
+            if (255 < value + offsetValue)
+            {
+                offsetValue = 255 - value;
+            }
+        }
+
+        if (editRow == footerRow && editColIndex == 2)
+        {
+            if (value + offsetValue < 1)
+            {
+                offsetValue = -(value - 1);
+            }
+        }
+        else
+        {
+            if (value + offsetValue < 0)
+            {
+                offsetValue = -value;
+            }
+        }
+        
         // editRow.SetScoreByColIndex(value + offsetValue, editColIndex);
         editRow.SetScoreAdjustOffsetByColIndex(offsetValue, editColIndex);
+        
+        unsigned = (offsetValue < 0) ? offsetValue + 0x10000 : offsetValue;
+        counterOffsets[editCounterIndex] = (ushort)unsigned;
+        OffsetArrayToSyncValue();
+        RequestSerialization();
     }
 
     public void CountUp()
@@ -1250,12 +1350,44 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         offsetValueChanged(1);
     }
 
+    public void CountUp10()
+    {
+#if DEBUG_EIJIS_MNBK_AUTOCOUNTER
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::CountUp10()");
+#endif
+        offsetValueChanged(10);
+    }
+
+    public void CountUp100()
+    {
+#if DEBUG_EIJIS_MNBK_AUTOCOUNTER
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::CountUp100()");
+#endif
+        offsetValueChanged(100);
+    }
+
     public void CountDown()
     {
 #if DEBUG_EIJIS_MNBK_AUTOCOUNTER
         table._Log($"EIJIS_DEBUG BilliardsScoreScreen::CountDown()");
 #endif
         offsetValueChanged(-1);
+    }
+    
+    public void CountDown10()
+    {
+#if DEBUG_EIJIS_MNBK_AUTOCOUNTER
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::CountDown10()");
+#endif
+        offsetValueChanged(-10);
+    }
+    
+    public void CountDown100()
+    {
+#if DEBUG_EIJIS_MNBK_AUTOCOUNTER
+        table._Log($"EIJIS_DEBUG BilliardsScoreScreen::CountDown100()");
+#endif
+        offsetValueChanged(-100);
     }
     
     private void editSelectionUpdate()
@@ -1301,15 +1433,22 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
 
     private void UpdateUnsignedScoreAdjustOffsets()
     {
-        highGroup.GetTeamRow().SetScoreAdjustOffsetByArray(new []{ ByteToSignedOffsetValue(player1ScoreOffset), ByteToSignedOffsetValue(player1GoalOffset), ByteToSignedOffsetValue(player1SafetyOffset), 0, 0, 0, 0});
-        lowGroup.GetTeamRow().SetScoreAdjustOffsetByArray(new []{ ByteToSignedOffsetValue(player2ScoreOffset), ByteToSignedOffsetValue(player2GoalOffset), ByteToSignedOffsetValue(player2SafetyOffset), 0, 0, 0, 0});
-        footerRow.SetScoreAdjustOffsetByArray(new []{ ByteToSignedOffsetValue(ballDeadCountOffset), 0, ByteToSignedOffsetValue(inningCountOffset), 0, 0, 0, 0});
+        highGroup.GetTeamRow().SetScoreAdjustOffsetByArray(new []{ UshortToSignedOffsetValue(player1ScoreOffset), UshortToSignedOffsetValue(player1GoalOffset), UshortToSignedOffsetValue(player1SafetyOffset), 0, 0, 0, 0});
+        lowGroup.GetTeamRow().SetScoreAdjustOffsetByArray(new []{ UshortToSignedOffsetValue(player2ScoreOffset), UshortToSignedOffsetValue(player2GoalOffset), UshortToSignedOffsetValue(player2SafetyOffset), 0, 0, 0, 0});
+        footerRow.SetScoreAdjustOffsetByArray(new []{ UshortToSignedOffsetValue(ballDeadCountOffset), 0, UshortToSignedOffsetValue(inningCountOffset), 0, 0, 0, 0});
     }
 
     private int ByteToSignedOffsetValue(byte b)
     {
         int unsigned = b;
         int offsetValue = (127 < unsigned) ? -(256 - unsigned) : unsigned;
+        return offsetValue;
+    }
+
+    private int UshortToSignedOffsetValue(ushort w)
+    {
+        int unsigned = w;
+        int offsetValue = (0x1FFF < unsigned) ? -(0x10000 - unsigned) : unsigned;
         return offsetValue;
     }
 
