@@ -59,8 +59,6 @@ public class NetworkingManager : UdonSharpBehaviour
     // bitmask of pocketed balls
     [UdonSynced][NonSerialized] public uint ballsPocketedSynced;
 #if EIJIS_CALLSHOT
-    [UdonSynced] [NonSerialized] public uint targetPocketedSynced;
-    [UdonSynced] [NonSerialized] public uint otherPocketedSynced;
     
     // bitmask of called pockets
     [UdonSynced] [NonSerialized] public uint pointPocketsSynced;
@@ -342,8 +340,6 @@ public class NetworkingManager : UdonSharpBehaviour
         //gameStateSynced = 2;
         ballsPocketedSynced = defaultBallsPocketed;
 #if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
         calledBallsSynced = 0;
         pointPocketsSynced = 0;
 #endif
@@ -392,10 +388,6 @@ public class NetworkingManager : UdonSharpBehaviour
 #endif
         Array.Copy(fbScores, fourBallScoresSynced, 2);
         ballsPocketedSynced = ballsPocketed;
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = targetPocketed;
-        otherPocketedSynced = otherPocketed;
-#endif
         colorTurnSynced = colorTurnLocal;
 #if EIJIS_PUSHOUT
         pushOutStateSynced = pushOutStateLocal;
@@ -682,8 +674,6 @@ public class NetworkingManager : UdonSharpBehaviour
 #else
             isTableOpenSynced = !(table.is9Ball && table.requireCallShotLocal);
 #endif
-            targetPocketedSynced = 0;
-            otherPocketedSynced = 0;
             teamColorSynced = (byte)(teamIdSynced ^ 0x1u);
             calledBallsSynced = 0;
         }
@@ -1081,10 +1071,6 @@ public class NetworkingManager : UdonSharpBehaviour
         Array.Copy(newBallsP, ballsPSynced, MAX_BALLS);
 #endif
         ballsPocketedSynced = ballsPocketed;
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
-#endif
         Array.Copy(newScores, fourBallScoresSynced, 2);
         gameModeSynced = (byte)gameMode;
         teamIdSynced = (byte)teamId;
@@ -1363,10 +1349,6 @@ public class NetworkingManager : UdonSharpBehaviour
             ballsPocketedSynced = spec;
 #endif 
         }
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
-#endif
 
         bufferMessages(true);
     }
@@ -1392,10 +1374,6 @@ public class NetworkingManager : UdonSharpBehaviour
 #else
         ballsPocketedSynced = decodeU16(gameState, 0x6C);
 #endif 
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
-#endif
         teamIdSynced = gameState[0x6E];
         foulStateSynced = gameState[0x6F];
         isTableOpenSynced = gameState[0x70] != 0;
@@ -1457,11 +1435,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #else
         ballsPocketedSynced = decode32(gameState, encodePos);
         encodePos += 4;
- #endif 
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
-#endif
+#endif 
         teamIdSynced = gameState[encodePos];
         encodePos += 1;
         foulStateSynced = gameState[encodePos];
@@ -1513,10 +1487,6 @@ public class NetworkingManager : UdonSharpBehaviour
 
         ballsPocketedSynced = decode32(gameState, encodePos);
         encodePos += 4;
-#if EIJIS_CALLSHOT
-        targetPocketedSynced = 0;
-        otherPocketedSynced = 0;
-#endif
         teamIdSynced = gameState[encodePos];
         encodePos += 1;
         foulStateSynced = gameState[encodePos];

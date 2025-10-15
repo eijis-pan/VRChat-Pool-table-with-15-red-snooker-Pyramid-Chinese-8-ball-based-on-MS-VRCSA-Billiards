@@ -403,8 +403,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
     [NonSerialized] public uint ballsPocketedLocal;
 #if EIJIS_CALLSHOT
-    [NonSerialized] public uint targetPocketedLocal;
-    [NonSerialized] public uint otherPocketedLocal;
+    [NonSerialized] public uint targetPocketed;
+    [NonSerialized] public uint otherPocketed;
     [NonSerialized] public uint pointPocketsLocal;
 #endif
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
@@ -545,10 +545,6 @@ public class BilliardsModule : UdonSharpBehaviour
     private bool[] ballhasHitCushion;
     private bool ballBounced;//tracks if any ball has touched the cushion after initial ball collision
     private uint ballsPocketedOrig;
-#if EIJIS_CALLSHOT
-    private uint targetPocketedOrig;
-    private uint otherPocketedOrig;
-#endif
     private int firstHit = 0;
     private int secondHit = 0;
     private int thirdHit = 0;
@@ -1704,11 +1700,7 @@ public class BilliardsModule : UdonSharpBehaviour
         onRemoteTeamIdChanged(networkingManager.teamIdSynced);
         onRemoteFourBallCueBallChanged(networkingManager.fourBallCueBallSynced);
         onRemoteColorTurnChanged(networkingManager.colorTurnSynced);
-#if EIJIS_CALLSHOT
-        onRemoteBallsPocketedChanged(networkingManager.ballsPocketedSynced, networkingManager.targetPocketedSynced, networkingManager.otherPocketedSynced);
-#else
         onRemoteBallsPocketedChanged(networkingManager.ballsPocketedSynced);
-#endif
         onRemoteFoulStateChanged(networkingManager.foulStateSynced);
         onRemoteFourBallScoresUpdated(networkingManager.fourBallScoresSynced);
         onRemoteIsTableOpenChanged(networkingManager.isTableOpenSynced, networkingManager.teamColorSynced);
@@ -2198,8 +2190,8 @@ public class BilliardsModule : UdonSharpBehaviour
         graphicsManager._UpdatePushOut(pushOutStateLocal);
 #endif
 #if EIJIS_CALLSHOT
-        targetPocketedLocal = 0x0u;
-        otherPocketedLocal = 0x0u;
+        targetPocketed = 0x0u;
+        otherPocketed = 0x0u;
 #endif
 
         // Reflect game state
@@ -2361,11 +2353,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
     }
 
-#if EIJIS_CALLSHOT
-    private void onRemoteBallsPocketedChanged(uint ballsPocketedSynced, uint targetPocketedSynced, uint otherPocketedSynced)
-#else
     private void onRemoteBallsPocketedChanged(uint ballsPocketedSynced)
-#endif
     {
         if (!gameLive) return;
 
@@ -2373,10 +2361,6 @@ public class BilliardsModule : UdonSharpBehaviour
         if (ballsPocketedLocal != ballsPocketedSynced) _LogInfo($"onRemoteBallsPocketedChanged ballsPocketed={ballsPocketedSynced:X}");
 
         ballsPocketedLocal = ballsPocketedSynced;
-#if EIJIS_CALLSHOT
-        targetPocketedLocal = targetPocketedSynced;
-        otherPocketedLocal = otherPocketedSynced;
-#endif
 
         graphicsManager._UpdateScorecard();
         graphicsManager._RackBalls();
@@ -2630,8 +2614,8 @@ public class BilliardsModule : UdonSharpBehaviour
         ballhasHitCushion = new bool[MAX_BALLS];
         ballsPocketedOrig = ballsPocketedLocal;
 #if EIJIS_CALLSHOT
-        targetPocketedOrig = targetPocketedLocal;
-        otherPocketedOrig = otherPocketedLocal;
+        targetPocketed = 0;
+        otherPocketed = 0;
 #endif
         jumpShotFoul = false;
         fallOffFoul = false;
@@ -3205,13 +3189,13 @@ public class BilliardsModule : UdonSharpBehaviour
             if ((!requireCallShotLocal || callSuccess) &&
                 (((0x1U << id) & ((bmask) | (isTableOpenLocal ? 0xFFFCU : 0x0000U) | ((bmask & ballsPocketedLocal) == bmask ? 0x2U : 0x0U))) > 0))
             {
-                targetPocketedLocal |= 1U << id;
+                targetPocketed |= 1U << id;
             }
             else
             {
                 if (0 != id)
                 {
-                    otherPocketedLocal |= 1U << id;
+                    otherPocketed |= 1U << id;
                 }
             }
 #endif
@@ -3226,14 +3210,14 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
             if (!requireCallShotLocal || callSuccess)
             {
-                targetPocketedLocal |= 1U << id;
+                targetPocketed |= 1U << id;
                 calledBallsLocal = 0;
             }
             else
             {
                 if (0 != id)
                 {
-                    otherPocketedLocal |= 1U << id;
+                    otherPocketed |= 1U << id;
                 }
             }
 #endif
@@ -3395,8 +3379,8 @@ public class BilliardsModule : UdonSharpBehaviour
 
                     ballsPocketedLocal = ballsPocketedLocal & ~(0x2U);
 #if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(0x2U);
-                    otherPocketedLocal = otherPocketedLocal & ~(0x2U);
+                    targetPocketed = targetPocketed & ~(0x2U);
+                    otherPocketed = otherPocketed & ~(0x2U);
 #endif
                     ballsP[1] = Vector3.zero;
                     moveBallInDirUntilNotTouching(1, Vector3.right * k_BALL_RADIUS * .051f);
@@ -3441,8 +3425,8 @@ public class BilliardsModule : UdonSharpBehaviour
                     deferLossCondition = false;     //也别想输
                     ballsPocketedLocal = ballsPocketedLocal & ~(0x2U);
 #if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(0x2U);
-                    otherPocketedLocal = otherPocketedLocal & ~(0x2U);
+                    targetPocketed = targetPocketed & ~(0x2U);
+                    otherPocketed = otherPocketed & ~(0x2U);
 #endif
                     ballsP[1] = initialPositions[1][1]; //初始点
                     moveBallInDirUntilNotTouching(1, Vector3.right * .051f);
@@ -3459,13 +3443,13 @@ public class BilliardsModule : UdonSharpBehaviour
                     if (requireCallShotLocal)
                     {
 #if EIJIS_DEBUG_CALLSHOT_BALL
-                        _LogInfo($"  requireCallShot targetPocketedLocal = {targetPocketedLocal:X4}, targetPocketedOrig = {targetPocketedOrig:x4}");
-                        _LogInfo($"           masked targetPocketedLocal = {(targetPocketedLocal & bmask):X4}, targetPocketedOrig = {(targetPocketedOrig & bmask):x4}");
-                        _LogInfo($"                  otherPocketedLocal = {otherPocketedLocal:X4}, otherPocketedLocal = {otherPocketedLocal:x4}");
-                        _LogInfo($"           masked otherPocketedLocal = {(otherPocketedLocal & pocketMask):X4}, otherPocketedLocal = {(otherPocketedOrig & pocketMask):x4}");
+                        _LogInfo($"  requireCallShot targetPocketed = {targetPocketed:X4}");
+                        _LogInfo($"           masked targetPocketed = {(targetPocketed & bmask):X4}");
+                        _LogInfo($"                  otherPocketed = {otherPocketed:X4}, otherPocketed = {otherPocketed:x4}");
+                        _LogInfo($"           masked otherPocketed = {(otherPocketed & pocketMask):X4}");
 #endif
-                        isObjectiveSink = (targetPocketedLocal & bmask) > (targetPocketedOrig & bmask);
-                        isOpponentSink = isOpponentSink | (otherPocketedLocal & pocketMask) > (otherPocketedOrig & pocketMask);
+                        isObjectiveSink = (targetPocketed & bmask) > 0;
+                        isOpponentSink = isOpponentSink | (otherPocketed & pocketMask) > 0;
 #if EIJIS_DEBUG_CALLSHOT_BALL
                         _LogInfo($"  isObjectiveSink = {isObjectiveSink}, isOpponentSink = {isOpponentSink}");
 #endif
@@ -3501,7 +3485,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     uint sink_orange = 0;
                     uint sink_blue = 0;
 #if EIJIS_CALLSHOT
-                    uint pmask = (requireCallShotLocal ? (targetPocketedLocal & ~targetPocketedOrig) : (ballsPocketedLocal ^ ballsPocketedOrig)) >> 2;
+                    uint pmask = (requireCallShotLocal ? targetPocketed : (ballsPocketedLocal ^ ballsPocketedOrig)) >> 2;
 #else
                     uint pmask = (ballsPocketedLocal ^ ballsPocketedOrig) >> 2; // only check balls that were pocketed this turn
 #endif
@@ -3556,22 +3540,22 @@ public class BilliardsModule : UdonSharpBehaviour
 
                 // Rule #2: Pocketing cueball, is a foul
 #if EIJIS_CALLSHOT
-                isObjectiveSink = (targetPocketedLocal & pocketMask) > (targetPocketedOrig & pocketMask);
+                isObjectiveSink = (targetPocketed & pocketMask) > 0;
 #else
                 isObjectiveSink = (ballsPocketedLocal & 0x3FEu) > (ballsPocketedOrig & 0x3FEu);
 #endif
 #if EIJIS_DEBUG_CALLSHOT_BALL
                 if (requireCallShotLocal)
                 {
-                    _LogInfo($"  requireCallShot targetPocketedLocal = {targetPocketedLocal:X4}, targetPocketedOrig = {targetPocketedOrig:x4}");
-                    _LogInfo($"           masked targetPocketedLocal = {(targetPocketedLocal & pocketMask):X4}, targetPocketedOrig = {(targetPocketedOrig & pocketMask):x4}");
-                    _LogInfo($"                  otherPocketedLocal = {otherPocketedLocal:X4}, otherPocketedLocal = {otherPocketedLocal:x4}");
-                    _LogInfo($"           masked otherPocketedLocal = {(otherPocketedLocal & pocketMask):X4}, otherPocketedLocal = {(otherPocketedOrig & pocketMask):x4}");
+                    _LogInfo($"  requireCallShot targetPocketed = {targetPocketed:X4}");
+                    _LogInfo($"           masked targetPocketed = {(targetPocketed & pocketMask):X4}");
+                    _LogInfo($"                  otherPocketed = {otherPocketed:X4}, otherPocketed = {otherPocketed:x4}");
+                    _LogInfo($"           masked otherPocketed = {(otherPocketed & pocketMask):X4}");
                 }
 #endif
 
 #if EIJIS_CALLSHOT
-                isOpponentSink = (otherPocketedLocal & pocketMask) > (otherPocketedOrig & pocketMask);
+                isOpponentSink = (otherPocketed & pocketMask) > 0;
                 if (isObjectiveSink || isOnBreakShot)
                 {
                     isOpponentSink = false;
@@ -3605,7 +3589,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
                 // Win condition: Pocket game ball ( and do not foul )
 #if EIJIS_CALLSHOT
-                winCondition = ((targetPocketedLocal & gameBallMask) == gameBallMask) && !foulCondition;
+                winCondition = ((targetPocketed & gameBallMask) == gameBallMask) && !foulCondition;
 #else
                 winCondition = ((ballsPocketedLocal & gameBallMask) == gameBallMask) && !foulCondition;
 #endif
@@ -3632,8 +3616,8 @@ public class BilliardsModule : UdonSharpBehaviour
                 {
                     ballsPocketedLocal = ballsPocketedLocal & ~(gameBallMask);
 #if EIJIS_CALLSHOT
-                    targetPocketedLocal = targetPocketedLocal & ~(gameBallMask);
-                    otherPocketedLocal = otherPocketedLocal & ~(gameBallMask);
+                    targetPocketed = targetPocketed & ~(gameBallMask);
+                    otherPocketed = otherPocketed & ~(gameBallMask);
 #endif
                     ballsP[gameBallId] = initialPositions[gameModeLocal][gameBallId];
                     //keep moving ball down the table until it's not touching any other balls
@@ -3677,14 +3661,14 @@ public class BilliardsModule : UdonSharpBehaviour
                     }
 
 #if EIJIS_CALLSHOT
-                    int scoreUp = (int)SoftwareFallback((targetPocketedLocal & ~targetPocketedOrig) & 0x3FEu);
+                    int scoreUp = (int)SoftwareFallback(targetPocketed & 0x3FEu);
                     if (isOpponentSink)
                     {
-                        deadCountUp += (int)SoftwareFallback((otherPocketedLocal & ~otherPocketedOrig) & 0x3FEu);
+                        deadCountUp += (int)SoftwareFallback(otherPocketed & 0x3FEu);
                     }
                     else
                     {
-                        scoreUp += (int)SoftwareFallback((otherPocketedLocal & ~otherPocketedOrig) & 0x3FEu);
+                        scoreUp += (int)SoftwareFallback(otherPocketed & 0x3FEu);
                     }
 #else
                     int scoreUp = (int)SoftwareFallback((ballsPocketedLocal & ~ballsPocketedOrig) & 0x3FEu);
@@ -3704,8 +3688,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
                     if (requireCallShotLocal)
                     {
-                        _LogInfo($"_TriggerSimulationEnded target pocketedPrev={(targetPocketedOrig & 0x3FEu):X3} pocketedCurr={(targetPocketedLocal & 0x3FEu):X3}");
-                        _LogInfo($"_TriggerSimulationEnded others pocketedPrev={(otherPocketedOrig & 0x3FEu):X3} pocketedCurr={(otherPocketedLocal & 0x3FEu):X3}");
+                        _LogInfo($"_TriggerSimulationEnded target pocketedCurr={(targetPocketed & 0x3FEu):X3}");
+                        _LogInfo($"_TriggerSimulationEnded others pocketedCurr={(otherPocketed & 0x3FEu):X3}");
                     }
                     else
                     {
@@ -4105,7 +4089,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_PUSHOUT || EIJIS_CALLSHOT
             networkingManager._OnSimulationEnded(ballsP, ballsPocketedLocal
 #if EIJIS_CALLSHOT
-                , targetPocketedLocal, otherPocketedLocal
+                , targetPocketed, otherPocketed
 #endif
                 , fbScoresLocal, colorTurnLocal
 #if EIJIS_PUSHOUT
