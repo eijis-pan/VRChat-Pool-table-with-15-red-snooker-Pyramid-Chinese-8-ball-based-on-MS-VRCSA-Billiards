@@ -18,6 +18,7 @@
 // #define EIJIS_WINNER_TEXT_HOTFIX
 
 // #define EIJIS_DEBUG_GAMESTATE_SYNC
+// #define EIJIS_DEBUG_GAME_STATE_SHOT_CODE
 
 using System;
 using UdonSharp;
@@ -1267,7 +1268,15 @@ public class NetworkingManager : UdonSharpBehaviour
     public void _OnLoadGameState(string gameStateStr)
     {
 #if EIJIS_ISSUE_FIX
+#if EIJIS_MNBK_AUTOCOUNTER
+        if (gameStateStr.StartsWith("v4mnbk:"))
+        {
+            onLoadGameStateV4mnbk(gameStateStr.Substring(7));
+        }
+        else if (gameStateStr.StartsWith("v4:"))
+#else
         if (gameStateStr.StartsWith("v4:"))
+#endif
         {
             onLoadGameStateV4(gameStateStr.Substring(3));
         }
@@ -1515,10 +1524,106 @@ public class NetworkingManager : UdonSharpBehaviour
         bufferMessages(true);
     }
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    
+    uint gameStateLengthV4mnbk = 443u;
+    private void onLoadGameStateV4mnbk(string gameStateStr)
+    {
+        if (!isValidBase64(gameStateStr)) return;
+
+        byte[] gameState = Convert.FromBase64String(gameStateStr);
+        if (gameState.Length != gameStateLengthV4mnbk) return;
+
+        stateIdSynced++;
+
+        int encodePos = 0; // Add the size of the loaded type in bytes after loading
+
+        for (int i = 0; i < 32; i++)
+        {
+            ballsPSynced[i] = bytesToVec3(gameState, encodePos);
+            encodePos += 12;
+        }
+        cueBallVSynced = bytesToVec3(gameState, encodePos);
+        encodePos += 12;
+        cueBallWSynced = bytesToVec3(gameState, encodePos);
+        encodePos += 12;
+
+        ballsPocketedSynced = decode32(gameState, encodePos);
+        encodePos += 4;
+        teamIdSynced = gameState[encodePos];
+        encodePos += 1;
+        foulStateSynced = gameState[encodePos];
+        encodePos += 1;
+        isTableOpenSynced = gameState[encodePos] != 0;
+        encodePos += 1;
+        teamColorSynced = gameState[encodePos];
+        encodePos += 1;
+        turnStateSynced = gameState[encodePos];
+        encodePos += 1;
+        gameModeSynced = gameState[encodePos];
+        encodePos += 1;
+        timerSynced = gameState[encodePos];
+        encodePos += 1;
+        teamsSynced = gameState[encodePos] != 0;
+        encodePos += 1;
+        fourBallScoresSynced[0] = gameState[encodePos];
+        encodePos += 1;
+        fourBallScoresSynced[1] = gameState[encodePos];
+        encodePos += 1;
+        fourBallCueBallSynced = gameState[encodePos];
+        encodePos += 1;
+        colorTurnSynced = gameState[encodePos] != 0;
+#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 1;
+#endif
+#if EIJIS_PUSHOUT
+        pushOutStateSynced = gameState[encodePos];
+#endif
+#if EIJIS_CALLSHOT || EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 1;
+#endif
+#if EIJIS_CALLSHOT
+        pointPocketsSynced = gameState[encodePos];
+        encodePos += 1;
+        calledBallsSynced = decodeU16(gameState, encodePos);
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 2;
+        inningCountSynced = gameState[encodePos];
+        encodePos += 1;
+        player1ScoreSynced = decodeU16(gameState, encodePos);
+        encodePos += 2;
+        player1SafetySynced = gameState[encodePos];
+        encodePos += 1;
+        player1GoalSynced = decodeU16(gameState, encodePos);
+        encodePos += 2;
+        player2ScoreSynced = decodeU16(gameState, encodePos);
+        encodePos += 2;
+        player2SafetySynced = gameState[encodePos];
+        encodePos += 1;
+        player2GoalSynced = decodeU16(gameState, encodePos);
+        encodePos += 2;
+
+        ballDeadCountSynced = decodeU16(gameState, encodePos);
+        encodePos += 2;
+        safetyCalledSynced = gameState[encodePos] != 0;
+        encodePos += 1;
+        pausedSynced = gameState[encodePos] != 0;
+        // encodePos += 1;
+#endif
+
+        bufferMessages(true);
+    }
+    
+#endif
     public string _EncodeGameState()
     {
 #if EIJIS_ISSUE_FIX
+#if EIJIS_MNBK_AUTOCOUNTER
+        byte[] gameState = new byte[gameStateLengthV4mnbk];
+#else
         byte[] gameState = new byte[gameStateLengthV4];
+#endif
 #else
         byte[] gameState = new byte[gameStateLength];
 #endif
@@ -1558,14 +1663,55 @@ public class NetworkingManager : UdonSharpBehaviour
         gameState[encodePos] = fourBallCueBallSynced;
         encodePos += 1;
         gameState[encodePos] = (byte)(colorTurnSynced ? 1 : 0);
-        // encodePos += 1;
-        // gameState[encodePos] = pushOutStateSynced;
+#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 1;
+#endif
+#if EIJIS_PUSHOUT
+        gameState[encodePos] = pushOutStateSynced;
+#endif
+#if EIJIS_CALLSHOT || EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 1;
+#endif
+#if EIJIS_CALLSHOT
+        gameState[encodePos] = pointPocketsSynced;
+        encodePos += 1;
+        encodeU16(gameState, encodePos, calledBallsSynced);
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        encodePos += 2;
+        gameState[encodePos] = inningCountSynced;
+        encodePos += 1;
+        encodeU16(gameState, encodePos, player1ScoreSynced);
+        encodePos += 2;
+        gameState[encodePos] = player1SafetySynced;
+        encodePos += 1;
+        encodeU16(gameState, encodePos, player1GoalSynced);
+        encodePos += 2;
+        encodeU16(gameState, encodePos, player2ScoreSynced);
+        encodePos += 2;
+        gameState[encodePos] = player2SafetySynced;
+        encodePos += 1;
+        encodeU16(gameState, encodePos, player2GoalSynced);
+        encodePos += 2;
+        encodeU16(gameState, encodePos, ballDeadCountSynced);
+        encodePos += 2;
+        gameState[encodePos] = (byte)(safetyCalledSynced ? 1 : 0);
+        encodePos += 1;
+        gameState[encodePos] = (byte)(pausedSynced ? 1 : 0);
+#endif
 
         // find gameStateLength
          //Debug.Log("gameStateLength = " + (encodePos + 1));
+#if EIJIS_DEBUG_GAME_STATE_SHOT_CODE
+        table._LogInfo($"EIJIS_DEBUG   gameStateLength = {encodePos + 1}");
+#endif
 
 #if EIJIS_ISSUE_FIX
+#if EIJIS_MNBK_AUTOCOUNTER
+        return "v4mnbk:" + Convert.ToBase64String(gameState, Base64FormattingOptions.None);
+#else
         return "v4:" + Convert.ToBase64String(gameState, Base64FormattingOptions.None);
+#endif
 #else
         return "v3:" + Convert.ToBase64String(gameState, Base64FormattingOptions.None);
 #endif
