@@ -6548,8 +6548,8 @@ public class BilliardsModule : UdonSharpBehaviour
         Array.Copy(ballsP, positionClone, ballsP.Length);
         byte[] scoresClone = new byte[fbScoresLocal.Length];
         Array.Copy(fbScoresLocal, scoresClone, fbScoresLocal.Length);
-#if EIJIS_PUSHOUT
-        return new object[14]
+#if EIJIS_PUSHOUT || EIJIS_CALLSHOT || EIJIS_MNBK_AUTOCOUNTER
+        return new object[26]
 #else
         return new object[13]
 #endif
@@ -6558,6 +6558,12 @@ public class BilliardsModule : UdonSharpBehaviour
             turnStateLocal, networkingManager.cueBallVSynced, networkingManager.cueBallWSynced, colorTurnLocal
 #if EIJIS_PUSHOUT
             , pushOutStateLocal
+#endif
+#if EIJIS_CALLSHOT
+            , pointPocketsLocal, calledBallsLocal
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+            , inningCountLocal, player1ScoreLocal, player1SafetyLocal, player1GoalLocal, player2ScoreLocal, player2SafetyLocal, player2GoalLocal, ballDeadCountLocal, safetyCalledLocal, pausedLocal
 #endif
         };
     }
@@ -6570,6 +6576,12 @@ public class BilliardsModule : UdonSharpBehaviour
             (byte)state[9], (Vector3)state[10], (Vector3)state[11], (bool)state[12]
 #if EIJIS_PUSHOUT
             , (byte)state[13]
+#endif
+#if EIJIS_CALLSHOT
+            , (uint)state[14], (uint)state[15]
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+            , (int)state[16], (int)state[17], (int)state[18], (int)state[19], (int)state[20], (int)state[21], (int)state[22], (int)state[23], (bool)state[24], (bool)state[25]
 #endif
         );
     }

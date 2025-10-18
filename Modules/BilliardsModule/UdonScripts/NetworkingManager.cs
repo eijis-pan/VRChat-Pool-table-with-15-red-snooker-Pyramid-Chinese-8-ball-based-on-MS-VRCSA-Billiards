@@ -1062,6 +1062,12 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_PUSHOUT
         , byte pushOutState
 #endif
+#if EIJIS_CALLSHOT
+        , uint pointPockets, uint calledBalls
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        , int inningCount, int player1Score, int player1Safety, int player1Goal, int player2Score, int player2Safety, int player2Goal, int ballDeadCount, bool safetyCalled, bool paused
+#endif
     )
     {
         stateIdSynced = (ushort)stateIdLocal;
@@ -1086,6 +1092,23 @@ public class NetworkingManager : UdonSharpBehaviour
         colorTurnSynced = colorTurn;
 #if EIJIS_PUSHOUT
         pushOutStateSynced = pushOutState;
+#endif
+#if EIJIS_CALLSHOT
+        pointPocketsSynced = (byte)pointPockets;
+        calledBallsSynced = (ushort)calledBalls;
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+        inningCountSynced = (byte)inningCount;
+        player1ScoreSynced = (ushort)player1Score;
+        player1SafetySynced = (byte)player1Safety;
+        player1GoalSynced = (ushort)player1Goal;
+        player2ScoreSynced = (ushort)player2Score;
+        player2SafetySynced = (byte)player2Safety;
+        player2GoalSynced = (ushort)player2Goal;
+        ballDeadCountSynced = (ushort)ballDeadCount;
+
+        safetyCalledSynced = safetyCalled;
+        pausedSynced = paused;
 #endif
 
         bufferMessages(true);
