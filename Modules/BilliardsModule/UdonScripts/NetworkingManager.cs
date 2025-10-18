@@ -61,12 +61,12 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
     
     // bitmask of called pockets
-    [UdonSynced] [NonSerialized] public uint pointPocketsSynced;
+    [UdonSynced] [NonSerialized] public byte pointPocketsSynced;
 #endif
 #if EIJIS_CUEBALLSWAP || EIJIS_CALLSHOT
     
     // bitmask of called balls
-    [UdonSynced] [NonSerialized] public uint calledBallsSynced;
+    [UdonSynced] [NonSerialized] public ushort calledBallsSynced;
 #endif
 
     // the current team which is playing
@@ -760,8 +760,8 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CUEBALLSWAP
     public void _OnCalledBallChanged(bool enabled, uint id)
     {
-        uint ball_bit = 0x1u << (int)id;
-        uint calledBalls = calledBallsSynced;
+        ushort ball_bit = (ushort)(0x1u << (int)id);
+        ushort calledBalls = calledBallsSynced;
         if (enabled)
         {
             calledBalls = ball_bit;
@@ -796,8 +796,8 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
     public void _OnPocketChanged(bool pocketEnabled, uint pocket)
     {
-        uint pocketBit = 0x1u << (int)pocket;
-        uint pointPockets = pointPocketsSynced;
+        byte pocketBit = (byte)(0x1u << (int)pocket);
+        byte pointPockets = pointPocketsSynced;
         if (pocketEnabled)
         {
             pointPockets = pocketBit;

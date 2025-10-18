@@ -760,8 +760,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_SEMIAUTOCALL
         networkingManager.semiAutoCallSynced = semiAutoCallLocal;
 #endif
-        networkingManager.pointPocketsSynced = pointPocketsLocal;
-        networkingManager.calledBallsSynced = calledBallsLocal;
+        networkingManager.pointPocketsSynced = (byte)pointPocketsLocal;
+        networkingManager.calledBallsSynced = (ushort)calledBallsLocal;
 #endif
 #if EIJIS_MNBK_AUTOCOUNTER
         networkingManager.gameModeSynced = (byte)gameModeLocal;
