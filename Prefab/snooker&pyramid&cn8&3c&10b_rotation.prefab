@@ -8004,6 +8004,11 @@ PrefabInstance:
         type: 3}
       propertyPath: scoreTexts.Array.data[2]
       value: 
+      objectReference: {fileID: 7662029267649036503}
+    - target: {fileID: 4707277827050409671, guid: 9b19ab8d90469ef498ed0d0efd282bb3,
+        type: 3}
+      propertyPath: scoreTexts.Array.data[3]
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 4707277827050409671, guid: 9b19ab8d90469ef498ed0d0efd282bb3,
         type: 3}
@@ -8621,6 +8626,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af6d3e44e7feb724dbf14504e62cfd29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &7662029267649036503 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4480777819658915531, guid: 9b19ab8d90469ef498ed0d0efd282bb3,
+    type: 3}
+  m_PrefabInstance: {fileID: 6087200565763640860}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!224 &9202034363566221423 stripped

@@ -945,7 +945,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         uint[] values = new uint[3];
         values[0] = EncodeScoreParams_Rotation(team0Point, team0Goal, team0HighRun, team0Foul);
         values[1] = EncodeScoreParams_Rotation(team1Point, team1Goal, team1HighRun, team1Foul);
-        values[2] = EncodeScoreParams_Rotation(0, 0, 0, inningCount);
+        values[2] = EncodeScoreParams_Rotation(0, 0, inningCount, 0);
         DecodeScoreSyncValues_Rotation(values);
     }
     
