@@ -1011,7 +1011,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_MNBK_AUTOCOUNTER
     public void _OnSkillLevelChanged(uint teamId, uint skillLevel)
     {
-        byte point = table.MNBK_SKILLLEVEL_POINTS[skillLevel];
+        ushort point = table.MNBK_SKILLLEVEL_POINTS[skillLevel];
         if (teamId == 0)
         {
             player1GoalSynced = point;
