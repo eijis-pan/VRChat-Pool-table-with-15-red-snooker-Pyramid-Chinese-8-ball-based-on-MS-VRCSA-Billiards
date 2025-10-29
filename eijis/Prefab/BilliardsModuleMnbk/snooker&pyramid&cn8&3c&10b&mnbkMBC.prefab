@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: MNBK 3.0.7 mbc
+  m_text: MNBK 3.0.7a mbc
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 21ac83a342a0b7144a87e1d2c869c740, type: 2}
   m_sharedMaterial: {fileID: -3406411368475958213, guid: 21ac83a342a0b7144a87e1d2c869c740,
@@ -4080,9 +4080,19 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 4787352591017042952, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
+      propertyPath: snd_Sink
+      value: 
+      objectReference: {fileID: 8300000, guid: e915acdbee30e4d479efa23260998454, type: 3}
+    - target: {fileID: 4787352591017042952, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
       propertyPath: scoreScreen
       value: 
       objectReference: {fileID: 5649987236877135893}
+    - target: {fileID: 4787352591017042952, guid: bb36abf0720fef34ca63b3200e946304,
+        type: 3}
+      propertyPath: snd_hitball
+      value: 
+      objectReference: {fileID: 8300000, guid: 1a7d3f2250261b0498ade3b3a287f783, type: 3}
     - target: {fileID: 4787352591017042952, guid: bb36abf0720fef34ca63b3200e946304,
         type: 3}
       propertyPath: ScoreManagerHook
