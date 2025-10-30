@@ -339,7 +339,7 @@ public class BilliardsScoreScreen : UdonSharpBehaviour
         footerRow.Table = table;
         scoreSyncRows[scoreSyncRowsIndex++] = footerRow;
         footerRow.SetNoChangeTextOnZeroByColIndex(true, 1);
-        footerRow.SetEmptyTextOnZeroByColIndex(true, 2);
+        // footerRow.SetEmptyTextOnZeroByColIndex(true, 2);
         editCounterIndex = 2; // Counter1 Safety
         editSelectionUpdate();
 #endif

@@ -1380,7 +1380,7 @@ public class BilliardsModule : UdonSharpBehaviour
 
         if (isMnbk9Ball)
         {
-            networkingManager.inningCountSynced = 1;
+            networkingManager.inningCountSynced = 0; // 1;
             networkingManager.player1ScoreSynced = 0;
             networkingManager.player1SafetySynced = 0;
             networkingManager.player1GoalSynced = (ushort)player1GoalLocal;
