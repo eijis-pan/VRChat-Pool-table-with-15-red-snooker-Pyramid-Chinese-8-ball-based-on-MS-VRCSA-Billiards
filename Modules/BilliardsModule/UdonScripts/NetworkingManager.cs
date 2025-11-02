@@ -1114,6 +1114,7 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
         pointPocketsSynced = pointPockets;
         calledBallsSynced = calledBalls;
+        callShotLockSynced = false;
 #endif
         Array.Copy(newScores, fourBallScoresSynced, 2);
 #if EIJIS_BOWLARDS
