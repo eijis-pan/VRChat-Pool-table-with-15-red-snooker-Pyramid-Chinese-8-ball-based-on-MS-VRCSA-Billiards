@@ -4031,7 +4031,7 @@ public class BilliardsModule : UdonSharpBehaviour
                     isObjectiveSink = true;
                 }
                 
-                if (goalPointsLocal[teamIdLocal] <= networkingManager.totalPointsSynced[teamIdLocal])
+                if (goalPointsLocal[teamIdLocal] <= totalPointsLocal[teamIdLocal])
                 {
                     matchWinCondition = true;
                 }
