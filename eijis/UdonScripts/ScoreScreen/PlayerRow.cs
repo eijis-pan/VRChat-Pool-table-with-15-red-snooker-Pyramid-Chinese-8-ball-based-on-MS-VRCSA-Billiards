@@ -903,12 +903,22 @@ public class PlayerRow : UdonSharpBehaviour
             if (1 <= fixedFrame && 2 == bonusTypeByFrame[fixedFrame] && 2 == bonusTypeByFrame[fixedFrame - 1])
             {
                 fixedFrame -= 2;
+                
+                if (9 <= frameCount && 1 <= throwInningCount && bonusTypeByFrame[9] == 2)
+                {
+                    fixedFrame++;
+                }
             }
             else if (0 <= fixedFrame)
             {
                 if (2 == bonusTypeByFrame[fixedFrame] || (1 == bonusTypeByFrame[fixedFrame] && throwInningCount < 1))
                 {
                     fixedFrame -= 1;
+                    
+                    if (9 <= frameCount && bonusTypeByFrame[9] == 2 && bonusTypeByFrame[10] == 2)
+                    {
+                        fixedFrame++;
+                    }
                 }
             }
         }
