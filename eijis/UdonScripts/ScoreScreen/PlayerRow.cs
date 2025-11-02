@@ -39,7 +39,7 @@ public class PlayerRow : UdonSharpBehaviour
     public const int COL_ROTATION_GOAL = 1;
     public const int COL_ROTATION_HIGHRUN = 2;
     public const int COL_ROTATION_FOUL = 3;
-    public const int COL_ROTATION_FOOT_INNING = 3;
+    public const int COL_ROTATION_FOOT_INNING = 2;
 
     public const int COL_BOWLARDS_FINAL_SCORE = 30;
 
@@ -326,8 +326,8 @@ public class PlayerRow : UdonSharpBehaviour
     /// <param name="value">uint</param>
     public void DecodeSyncValue_Rotation(uint value)
     {
-        int foul = (int)((value >> 29) & 0x7u);
-        int highRun = (int)((value >> 20) & 0x1FFu);
+        int foul = (int)((value >> 30) & 0x3u);
+        int highRun = (int)((value >> 20) & 0x3FFu);
         int goal = (int)((value >> 10) & 0x3FFu);
         int point = (int)((value >> 0) & 0x3FFu);
                 
@@ -529,8 +529,8 @@ public class PlayerRow : UdonSharpBehaviour
     public uint EncodeScoreParams_Rotation(int point, int goal, int highRun, int foul)
     {
         uint scoreSyncValue = 0x0u;
-        scoreSyncValue |= (uint)((foul & 0x7u) << 29);
-        scoreSyncValue |= (uint)((highRun & 0x1FFu) << 20);
+        scoreSyncValue |= (uint)((foul & 0x3u) << 30);
+        scoreSyncValue |= (uint)((highRun & 0x3FFu) << 20);
         scoreSyncValue |= (uint)((goal & 0x3FFu) << 10);
         scoreSyncValue |= (uint)((point & 0x3FFu) << 0);
         return scoreSyncValue;
