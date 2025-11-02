@@ -2807,7 +2807,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
         if ((is8Ball || is10Ball || isRotation || isBowlards) && requireCallShotLocal && (!colorTurnLocal || !stateIdChanged))
         {
-            graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, callShotLockLocal);
+            graphicsManager._UpdatePointPocketMarker(pointPocketsLocal, networkingManager.callShotLockSynced);
         }
         else
         {
