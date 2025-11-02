@@ -4084,7 +4084,7 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_ROTATION
             
-            if (isRotation && goalPointsLocal[teamIdLocal] <= networkingManager.totalPointsSynced[teamIdLocal])
+            if (isRotation && goalPointsLocal[teamIdLocal] <= totalPointsLocal[teamIdLocal])
             {
                 onMatchWin();
                 return;
