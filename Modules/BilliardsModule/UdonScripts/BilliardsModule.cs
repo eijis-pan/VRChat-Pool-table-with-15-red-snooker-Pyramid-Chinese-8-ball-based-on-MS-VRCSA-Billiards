@@ -22,6 +22,7 @@
 #define EIJIS_BOWLARDS
 
 // #define EIJIS_DEFAULT_MODE_CHANGE
+#define EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -655,6 +656,9 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public bool localPlayerDistant = false;
 #if EIJIS_CALLSHOT
     [NonSerialized] public Vector3[] pocketLocations = new Vector3[6];
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+    [NonSerialized] public bool ignoreSidePocketOnCallShot = false;
+#endif
 #if EIJIS_SEMIAUTOCALL
     private Vector3[] findEasiestBallAndPocketConditions = new Vector3[]
     {
@@ -1170,6 +1174,9 @@ public class BilliardsModule : UdonSharpBehaviour
     public void _TriggerPocketHit(int pocketId, bool desktop)
     {
         if (localTeamId != teamIdLocal && !isPracticeMode) return; // is there a better way to do this?
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+        if (ignoreSidePocketOnCallShot && 4 <= pocketId) return;
+#endif
 
         if (!desktop && callShotLockLocal)
         {
@@ -5325,6 +5332,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_SEMIAUTOCALL
         findNearestPocket_x = k_vE.x / 2;
         findNearestPocket_n = findNearestPocket_x / k_vE.z;
+#endif
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+        ignoreSidePocketOnCallShot = (k_vF.x < 0 && k_vF.y < 0 && k_vF.z < 0);
 #endif
 #endif
 

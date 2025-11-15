@@ -8,6 +8,7 @@
 #define EIJIS_BOWLARDS
 
 // #define EIJIS_CALLSHOT_ALLOW_UNSELECT
+#define EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
 
 // #define EIJIS_DEBUG_BALLORDER
 
@@ -546,18 +547,36 @@ public class DesktopManager : UdonSharpBehaviour
         uint pockets = table.pointPocketsLocal;
         int pocketCount = table.pocketLocations.Length;
         int id = (asc ? 0 : pocketOrder[pocketOrder.Length - 1]);
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+        if (table.ignoreSidePocketOnCallShot && !asc && 4 <= id)
+        {
+            id = 2;
+        }
+#endif
         for (int i = 0; i < pocketCount; i++)
         {
             if (((pockets >> i) & 0x1u) != 0)
             {
                 int current = Array.IndexOf(pocketOrder, i);
                 int next = current + (asc ? 1 : -1);
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+                if (table.ignoreSidePocketOnCallShot && 0 <= next && next < pocketCount && 4 <= pocketOrder[next])
+                {
+                    next += (asc ? 1 : -1);
+                }
+#endif
                 if (next < 0 || pocketCount <= next)
                 {
 #if EIJIS_CALLSHOT_ALLOW_UNSELECT
                     id = i;
 #else
                     id = pocketOrder[(asc ? 0 : pocketOrder.Length - 1)];
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+                    if (table.ignoreSidePocketOnCallShot && !asc && 4 <= id)
+                    {
+                        id = 2;
+                    }
+#endif
 #endif
                     break;
                 }
