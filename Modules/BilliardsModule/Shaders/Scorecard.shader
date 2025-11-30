@@ -9,6 +9,10 @@
       _LeftScore("Left Score", Int) = 0
       _RightScore("Right Score", Int) = 0
       [KeywordEnum(Both, Left, Right)] _SolidsMode("Solids", Int) = 0
+      _LeftPadding("Left Padding", Int) = 0
+      _RightPadding("Right Padding", Int) = 0
+      _LeftScoreMode("Left Score Mode", Int) = 0
+      _RightScoreMode("Right Score Mode", Int) = 0
    }
    SubShader
    {
@@ -41,6 +45,7 @@
 
          static const float4 BLACK = float4(0, 0, 0, 0);
          static const float4 WHITE = float4(1, 1, 1, 1);
+         static const float4 GLAY = float4(0.08, 0.08, 0.08, 1);
 
          static const float OFFSET = 0.03125;
 
@@ -52,6 +57,10 @@
          int _SolidsMode;
          int _LeftScore;
          int _RightScore;
+         int _LeftPadding;
+         int _RightPadding;
+         int _LeftScoreMode;
+         int _RightScoreMode;
 
          // color of each ball as it appears on the scoreboard, left to right
          float4 _Colors[15]; /* = {
@@ -86,14 +95,18 @@
          {
             fixed4 base;
             float leftEnd;
+            float leftEnd2;
             float rightEnd;
+            float rightEnd2;
             switch (_GameMode)
             {
                case 0:
                {
                   base = tex2D(_EightBallTex, i.uv);
                   leftEnd = _LeftScore * 0.0625;
+                  leftEnd2 = leftEnd;
                   rightEnd = _RightScore * 0.0625;
+                  rightEnd2 = rightEnd;
                   break;
                }
                case 1:
@@ -105,15 +118,27 @@
                case 2:
                {
                   base = tex2D(_FourBallTex, i.uv);
-                  leftEnd = _LeftScore * 0.04681905;
-                  rightEnd = _RightScore * 0.04681905;
+                  // leftEnd = _LeftScore * 0.04681905;
+                  float leftUnit = _LeftScoreMode == 2 ? 0.01560635 : (_LeftScoreMode == 1 ? 0.023409525 : 0.04681905);
+                  leftEnd = (_LeftScore + _LeftPadding) * leftUnit;
+                  leftEnd2 = _LeftPadding * leftUnit;
+                  // rightEnd = _RightScore * 0.04681905;
+                  float rightUnit = _RightScoreMode == 2 ? 0.01560635 : (_RightScoreMode == 1 ? 0.023409525 : 0.04681905);
+                  rightEnd = (_RightScore + _RightPadding) * rightUnit;
+                  rightEnd2 = _RightPadding * rightUnit;
                   break;
                }
                case 3:
                {
                   base = tex2D(_FourBallTex, i.uv);
-                  leftEnd = _LeftScore * 0.04681905;
-                  rightEnd = _RightScore * 0.04681905;
+                  // leftEnd = _LeftScore * 0.04681905;
+                  float leftUnit = _LeftScoreMode == 2 ? 0.01560635 : (_LeftScoreMode == 1 ? 0.023409525 : 0.04681905);
+                  leftEnd = (_LeftScore + _LeftPadding) * leftUnit;
+                  leftEnd2 = _LeftPadding * leftUnit;
+                  // rightEnd = _RightScore * 0.04681905;
+                  float rightUnit = _RightScoreMode == 2 ? 0.01560635 : (_RightScoreMode == 1 ? 0.023409525 : 0.04681905);
+                  rightEnd = (_RightScore + _RightPadding) * rightUnit;
+                  rightEnd2 = _RightPadding * rightUnit;
                   break;
                }
                default:
@@ -124,7 +149,12 @@
 
             fixed4 leftComponent = BLACK;
             float leftStart = i.uv.x - OFFSET;
-            if (leftStart < leftEnd)
+            // if (leftStart < leftEnd)
+            if (leftStart < leftEnd2)
+            {
+                  leftComponent = GLAY * round(length(base.gb));
+            }
+            else if (leftStart < leftEnd)
             {
                int index = _GameMode == 0 ? leftStart / 0.0625 : 0;
                if (_SolidsMode == 2 && round(base.b) && index != 7)
@@ -141,7 +171,12 @@
 
             fixed4 rightComponent = BLACK;
             float rightStart = 1.0 - i.uv.x - OFFSET;
-            if (rightStart < rightEnd)
+            // if (rightStart < rightEnd)
+            if (rightStart < rightEnd2)
+            {
+                  rightComponent = GLAY * round(length(base.gb));
+            }
+            else if (rightStart < rightEnd)
             {
                int index = _GameMode == 0 ? 15 - rightStart / 0.0625 : 1;
                if (_SolidsMode == 1 && round(base.b) && index != 7)

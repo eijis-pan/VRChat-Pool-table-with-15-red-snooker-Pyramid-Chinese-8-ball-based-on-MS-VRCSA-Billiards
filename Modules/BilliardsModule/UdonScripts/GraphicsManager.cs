@@ -10,6 +10,7 @@
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_CAROM_CUSTOM_GOAL_POINT
 
 // #define EIJIS_DEBUG_PIRAMIDSCORE
 // #define EIJIS_DEBUG_CALLSHOT_MARKER
@@ -108,6 +109,10 @@ public class GraphicsManager : UdonSharpBehaviour
 	private GameObject scorecard_gameobject;
 	private GameObject scorecard_info;
 	private Color[] scorecardColors = new Color[15];
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+	private int leftScorePadding = 0;
+	private int rightScorePadding = 0;
+#endif
 
 	private bool shadowsDisabled;
 
@@ -1143,6 +1148,47 @@ int uniform_cue_colour;
 			balls[13].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[1];
 			balls[14].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[2];
 			balls[15].GetComponent<MeshFilter>().sharedMesh = meshOverrideFourBall[3];
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+
+			int leftScoreMode = 0;
+			int rightScoreMode = 0;
+			leftScorePadding = 0;
+			rightScorePadding = 0;
+			if (!table.isBanking)
+			{
+				if (table.player1GoalLocal <= 10)
+				{
+					leftScorePadding = 10 - table.player1GoalLocal;
+				}
+				else if (table.player1GoalLocal <= 20)
+				{
+					leftScorePadding = 20 - table.player1GoalLocal;
+					leftScoreMode = 1;
+				}
+				else if (table.player1GoalLocal <= 30)
+				{
+					leftScorePadding = 30 - table.player1GoalLocal;
+					leftScoreMode = 2;
+				}
+			
+				if (table.player2GoalLocal <= 10)
+				{
+					rightScorePadding = 10 - table.player2GoalLocal;
+				}
+				else if (table.player2GoalLocal <= 20)
+				{
+					rightScorePadding = 20 - table.player2GoalLocal;
+					rightScoreMode = 1;
+				}
+				else if (table.player2GoalLocal <= 30)
+				{
+					rightScorePadding = 30 - table.player2GoalLocal;
+					rightScoreMode = 2;
+				}
+			}
+			scorecard.SetInt("_LeftScoreMode", leftScoreMode);
+			scorecard.SetInt("_RightScoreMode", rightScoreMode);
+#endif
 		}
 		else
 		{
@@ -1372,6 +1418,10 @@ int uniform_cue_colour;
 		{
 			scorecard.SetInt("_LeftScore", table.fbScoresLocal[0]);
 			scorecard.SetInt("_RightScore", table.fbScoresLocal[1]);
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+			scorecard.SetInt("_LeftPadding", leftScorePadding);
+			scorecard.SetInt("_RightPadding", rightScorePadding);
+#endif
 
 			scorecardColors[0] = table.k_colour4Ball_team_0;
 			scorecardColors[1] = table.k_colour4Ball_team_1;
@@ -1434,6 +1484,10 @@ int uniform_cue_colour;
 			int counter1 = table.fbScoresLocal[1];
 			scorecard.SetInt("_LeftScore", counter0);
 			scorecard.SetInt("_RightScore", counter1);
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+			scorecard.SetInt("_LeftPadding", 0);
+			scorecard.SetInt("_RightPadding", 0);
+#endif
 			counter0 = (7 < counter0) ? 7 : counter0;//maybe 7->8?
 			counter1 = (7 < counter1) ? 7 : counter1;
 			for (int i = 0; i < counter0; i++) scorecardColors[i] = pColour1 / 1.5f;
@@ -1498,6 +1552,10 @@ int uniform_cue_colour;
 			}
 			scorecard.SetInt("_LeftScore", counter0[0]);
 			scorecard.SetInt("_RightScore", counter0[1]);
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+			scorecard.SetInt("_LeftPadding", 0);
+			scorecard.SetInt("_RightPadding", 0);
+#endif
 			scorecard.SetColorArray("_Colors", scorecardColors);
 
 			if (table.isTableOpenLocal || !usColors)

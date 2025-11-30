@@ -8,6 +8,8 @@
 #define EIJIS_10BALL
 #define EIJIS_BANKING
 
+#define EIJIS_CAROM_CUSTOM_GOAL_POINT
+
 using System;
 using UdonSharp;
 using UnityEngine;
@@ -23,6 +25,9 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private GameObject menuStart;
     [SerializeField] private GameObject menuJoinLeave;
     [SerializeField] private GameObject menuLobby;
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    [SerializeField] private GameObject menuCaromGoalPoint;
+#endif
     [SerializeField] private GameObject menuLoad;
     [SerializeField] private GameObject menuOther;
     [SerializeField] private GameObject menuUndo;
@@ -44,12 +49,19 @@ public class MenuManager : UdonSharpBehaviour
     [SerializeField] private TextMeshProUGUI timelimitDisplay;
     [SerializeField] private TextMeshProUGUI tableDisplay;
     [SerializeField] private TextMeshProUGUI physicsDisplay;
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    [SerializeField] private TextMeshProUGUI goalPointOrangeDisplay;
+    [SerializeField] private TextMeshProUGUI goalPointBlueDisplay;
+#endif
 
     private BilliardsModule table;
 
     private uint selectedTimer;
     private uint selectedTable;
     private uint selectedPhysics;
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    private uint[] selectedGoalPointIndex = new uint[2];
+#endif
 
     private Vector3 joinMenuPosition;
     private Quaternion joinMenuRotation;
@@ -87,6 +99,9 @@ public class MenuManager : UdonSharpBehaviour
         _RefreshToggleSettings();
         _RefreshLobby();
         _RefreshPlayerList();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        _RefreshGoalPoint();
+#endif
 
         _DisableMenuJoinLeave();
         _DisableLobbyMenu();
@@ -100,6 +115,9 @@ public class MenuManager : UdonSharpBehaviour
         _DisableCallLockMenu();
 #endif
         _EnableStartMenu();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        _DisableMenuCaromGoalPoint();
+#endif
 
         cueSizeText.text = (cueSizeSlider.value / 10f).ToString("F1");
     }
@@ -249,6 +267,16 @@ public class MenuManager : UdonSharpBehaviour
 #endif
         }
         gameModeDisplay.text = modeName;
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        if (table.gameStateLocal == 1 && table.isPlayer && table.isCarom && !table.isBanking)
+        {
+            _EnableMenuCaromGoalPoint();
+        }
+        else
+        {
+            _DisableMenuCaromGoalPoint();
+        }
+#endif
     }
     public void _RefreshPhysics()
     {
@@ -260,6 +288,41 @@ public class MenuManager : UdonSharpBehaviour
         tableDisplay.text = table._translations.Get((string)table.tableModels[table.tableModelLocal].GetProgramVariable("TABLENAME")); // auto translate by cheese
     }
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    public void _RefreshGoalPoint()
+    {
+        if (!ReferenceEquals(null, goalPointOrangeDisplay))
+        {
+            int teamId = 0;
+            int index = Array.IndexOf(table.CAROM_GOAL_POINTS, (byte)(table.player1GoalLocal));
+            selectedGoalPointIndex[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                goalPointOrangeDisplay.text = $"{table.CAROM_GOAL_POINTS[index]}";
+            }
+            else
+            {
+                goalPointOrangeDisplay.text = $"{table.player1GoalLocal}";
+            }
+        }
+
+        if (!ReferenceEquals(null, goalPointBlueDisplay))
+        {
+            int teamId = 1;
+            int index = Array.IndexOf(table.CAROM_GOAL_POINTS, (byte)(table.player2GoalLocal));
+            selectedGoalPointIndex[teamId] = index == -1 ? 0 : (uint)index;
+            if (index > -1)
+            {
+                goalPointBlueDisplay.text = $"{table.CAROM_GOAL_POINTS[index]}";
+            }
+            else
+            {
+                goalPointBlueDisplay.text = $"{table.player2GoalLocal}";
+            }
+        }
+    }
+    
+#endif
     public void _RefreshToggleSettings()
     {
         TeamsToggle_button.SetIsOnWithoutNotify(table.teamsLocal);
@@ -300,6 +363,9 @@ public class MenuManager : UdonSharpBehaviour
             _DisableLoadMenu();
             _DisableUndoMenu();
             _DisableMenuJoinLeave();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+            _DisableMenuCaromGoalPoint();
+#endif
             return;
         }
         Transform table_base = table._GetTableBase().transform;
@@ -312,6 +378,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+                _DisableMenuCaromGoalPoint();
+#endif
                 break;
             case 1://lobby
                 if (table.isPlayer)
@@ -327,6 +396,12 @@ public class MenuManager : UdonSharpBehaviour
                 menu_Join.localScale = joinMenuScale;
                 _EnableMenuJoinLeave();
                 _RefreshTeamJoinButtons();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+                if (table.isPlayer && table.isCarom && !table.isBanking)
+                    _EnableMenuCaromGoalPoint();
+                else
+                    _DisableMenuCaromGoalPoint();
+#endif
                 break;
             case 2://game live
                 _DisableLobbyMenu();
@@ -356,6 +431,9 @@ public class MenuManager : UdonSharpBehaviour
                     _EnableMenuJoinLeave();
                     _RefreshTeamJoinButtons();
                 }
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+                _DisableMenuCaromGoalPoint();
+#endif
                 break;
             case 3://game ended/reset
                 _DisableLobbyMenu();
@@ -363,6 +441,9 @@ public class MenuManager : UdonSharpBehaviour
                 _DisableLoadMenu();
                 _DisableUndoMenu();
                 _DisableMenuJoinLeave();
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+                _DisableMenuCaromGoalPoint();
+#endif
                 break;
         }
         Transform leave_Button = menu_Join.Find("LeaveButton");
@@ -582,6 +663,52 @@ public class MenuManager : UdonSharpBehaviour
         cueSizeText.text = newScale.ToString("F1");
     }
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    public void OrangeGoalPointRight()
+    {
+        uint teamId = 0;
+        if (selectedGoalPointIndex[teamId] < (table.CAROM_GOAL_POINTS.Length - 1))
+            selectedGoalPointIndex[teamId]++;
+        else
+            selectedGoalPointIndex[teamId] = 0;
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+    public void OrangeGoalPointLeft()
+    {
+        uint teamId = 0;
+        if (selectedGoalPointIndex[teamId] > 0)
+            selectedGoalPointIndex[teamId]--;
+        else
+            selectedGoalPointIndex[teamId] = (uint)(table.CAROM_GOAL_POINTS.Length - 1);
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+
+    public void BlueGoalPointRight()
+    {
+        uint teamId = 1;
+        if (selectedGoalPointIndex[teamId] < (table.CAROM_GOAL_POINTS.Length - 1))
+            selectedGoalPointIndex[teamId]++;
+        else
+            selectedGoalPointIndex[teamId] = 0;
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+    public void BlueGoalPointLeft()
+    {
+        uint teamId = 1;
+        if (selectedGoalPointIndex[teamId] > 0)
+            selectedGoalPointIndex[teamId]--;
+        else
+            selectedGoalPointIndex[teamId] = (uint)(table.CAROM_GOAL_POINTS.Length - 1);
+
+        table._TriggerGoalPointChanged(teamId, selectedGoalPointIndex[teamId]);
+    }
+    
+#endif
     [NonSerialized] public UIButton inButton;
     public void _OnButtonPressed() { onButtonPressed(inButton); }
     private void onButtonPressed(UIButton button)
@@ -873,6 +1000,18 @@ public class MenuManager : UdonSharpBehaviour
     public void _StateChangeCallLockMenu(bool state)
     {
         buttonCallLock.GetComponent<Image>().color = state ? buttonCallLockOnColor : buttonCallLockOffColor;
+    }
+#endif
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+
+    public void _EnableMenuCaromGoalPoint()
+    {
+        if (!ReferenceEquals(null, menuCaromGoalPoint)) menuCaromGoalPoint.SetActive(true);
+    }
+
+    public void _DisableMenuCaromGoalPoint()
+    {
+        if (!ReferenceEquals(null, menuCaromGoalPoint)) menuCaromGoalPoint.SetActive(false);
     }
 #endif
 }

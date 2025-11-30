@@ -10,6 +10,7 @@
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_CAROM_CUSTOM_GOAL_POINT
 
 using System;
 using UdonSharp;
@@ -140,6 +141,11 @@ public class NetworkingManager : UdonSharpBehaviour
 #if EIJIS_CALLSHOT
     [UdonSynced] [NonSerialized] public bool callShotLockSynced;
     
+#endif
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    [UdonSynced] [NonSerialized] public byte player1GoalSynced;
+    [UdonSynced] [NonSerialized] public byte player2GoalSynced;
+
 #endif
     [SerializeField] private PlayerSlot playerSlot;
     private BilliardsModule table;
@@ -860,6 +866,23 @@ public class NetworkingManager : UdonSharpBehaviour
         }
     }
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    public void _OnGoalPointChanged(uint teamId, uint goalPointIndex)
+    {
+        byte point = table.CAROM_GOAL_POINTS[goalPointIndex];
+        if (teamId == 0)
+        {
+            player1GoalSynced = point;
+        }
+        else //if (teamId == 1)
+        {
+            player2GoalSynced = point;
+        }
+
+        bufferMessages(false);
+    }
+
+#endif
     public void _ForceLoadFromState
     (
         int stateIdLocal,

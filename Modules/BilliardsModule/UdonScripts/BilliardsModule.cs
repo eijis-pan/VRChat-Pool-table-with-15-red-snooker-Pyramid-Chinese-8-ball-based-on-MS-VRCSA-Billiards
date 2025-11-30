@@ -15,6 +15,7 @@
 #define EIJIS_10BALL
 #define CHEESE_ISSUE_FIX
 #define EIJIS_BANKING
+#define EIJIS_CAROM_CUSTOM_GOAL_POINT
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -463,6 +464,17 @@ public class BilliardsModule : UdonSharpBehaviour
     }; 
 #endif
 #endif
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    [NonSerialized] public int player1GoalLocal;
+    [NonSerialized] public int player2GoalLocal;
+
+    public readonly byte[] CAROM_GOAL_POINTS =
+    {
+        3,4,5,6,7,8,9,
+        10,12,14,16,18,
+        20,25,30
+    };
+#endif
 
     #endregion
 
@@ -642,7 +654,14 @@ public class BilliardsModule : UdonSharpBehaviour
         cueControllers[1].TeamBlue = true;
         for (int i = 0; i < cueControllers.Length; i++)
         { cueControllers[i]._Init(); }
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        player1GoalLocal = player2GoalLocal = 10;
+#endif
         networkingManager._Init(this);
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        networkingManager.player1GoalSynced = (byte)player1GoalLocal;
+        networkingManager.player2GoalSynced = (byte)player2GoalLocal;
+#endif
 #if EIJIS_GUIDELINE2TOGGLE
         networkingManager.noGuideline2Synced = noGuideline2Local;
 #endif
@@ -863,6 +882,13 @@ public class BilliardsModule : UdonSharpBehaviour
         networkingManager._OnGameModeChanged(newGameMode);
     }
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    public void _TriggerGoalPointChanged(uint teamId, uint goalPointIndex)
+    {
+        networkingManager._OnGoalPointChanged(teamId, goalPointIndex);
+    }
+    
+#endif
     public void _TriggerGlobalSettingsUpdated(int newPhysicsMode, int newTableModel)
     {
         networkingManager._OnGlobalSettingsChanged((byte)newPhysicsMode, (byte)newTableModel);
@@ -1153,6 +1179,13 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             _LogYes("starting game");
         }
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        if (isCarom && !isBanking)
+        {
+            networkingManager.player1GoalSynced = (byte)player1GoalLocal;
+            networkingManager.player2GoalSynced = (byte)player2GoalLocal;
+        }
+#endif
         //0 is 8ball, 1 is 9ball, 2 is jp4b, 3 is kr4b, 4 is Snooker6Red)
 #if EIJIS_MANY_BALLS
         Vector3[] randomPositions = new Vector3[MAX_BALLS];
@@ -1426,6 +1459,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #if EIJIS_PUSHOUT
         onRemotePushOutStateChanged(networkingManager.pushOutStateSynced, stateIdChanged);
+#endif
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        onRemoteCaromGoalPointChanged(networkingManager.player1GoalSynced, networkingManager.player2GoalSynced);
 #endif
         // apply state transitions if needed
         onRemoteGameStateChanged(networkingManager.gameStateSynced);
@@ -2378,6 +2414,22 @@ public class BilliardsModule : UdonSharpBehaviour
         }
     }
 #endif
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+    
+    private void onRemoteCaromGoalPointChanged(byte player1GoalSynced, byte player2GoalSynced)
+    {
+        if (player1GoalSynced == player1GoalLocal && player2GoalSynced == player2GoalLocal) return;
+
+        _LogInfo($"onRemoteCaromGoalPointChanged player1Goal={player1GoalSynced} player2Goal={player2GoalSynced}");
+
+        if (player1GoalLocal != player1GoalSynced || player2GoalLocal != player2GoalSynced)
+        {
+            player1GoalLocal = player1GoalSynced;
+            player2GoalLocal = player2GoalSynced;
+            menuManager._RefreshGoalPoint();
+        }
+    }
+#endif
 #endregion
 
     #region PhysicsEngineCallbacks
@@ -3156,7 +3208,11 @@ public class BilliardsModule : UdonSharpBehaviour
                     ballsPocketedLocal |= 1u; // make the following function move the cue ball
                 fourBallReturnBalls();
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+                winCondition = fbScoresLocal[teamIdLocal] >= (teamIdLocal == 0 ? player1GoalLocal : player2GoalLocal);
+#else
                 winCondition = fbScoresLocal[teamIdLocal] >= 10;
+#endif
             }
 #if EIJIS_PYRAMID
             else if (isSnooker)
@@ -4211,7 +4267,11 @@ public class BilliardsModule : UdonSharpBehaviour
         fbMadePoint = true;
         aud_main.PlayOneShot(snd_PointMade, 1.0f);
 
+#if EIJIS_CAROM_CUSTOM_GOAL_POINT
+        if (fbScoresLocal[teamIdLocal] < (teamIdLocal == 0 ? player1GoalLocal : player2GoalLocal))
+#else
         if (fbScoresLocal[teamIdLocal] < 10)
+#endif
             fbScoresLocal[teamIdLocal]++;
     }
 

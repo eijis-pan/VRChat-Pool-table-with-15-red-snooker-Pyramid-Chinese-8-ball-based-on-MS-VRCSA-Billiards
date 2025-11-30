@@ -1,0 +1,215 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2088718312351761876
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 191910120368362717, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_text
+      value: Goal Point
+      objectReference: {fileID: 0}
+    - target: {fileID: 829875530791978034, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalPointBlue
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 85.248
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 105.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 276.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2856783324329239954, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3186510421514454883, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SendCustomEvent
+      objectReference: {fileID: 0}
+    - target: {fileID: 3186510421514454883, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_StringArgument
+      value: BlueGoalPointLeft
+      objectReference: {fileID: 0}
+    - target: {fileID: 3493763375760677417, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalLeft
+      objectReference: {fileID: 0}
+    - target: {fileID: 3558042917434759465, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_text
+      value: GoalPoint
+      objectReference: {fileID: 0}
+    - target: {fileID: 4099862627861145220, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SendCustomEvent
+      objectReference: {fileID: 0}
+    - target: {fileID: 4099862627861145220, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_StringArgument
+      value: OrangeGoalPointLeft
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893687451483889196, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_text
+      value: Goal Point
+      objectReference: {fileID: 0}
+    - target: {fileID: 5647211949525258752, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SendCustomEvent
+      objectReference: {fileID: 0}
+    - target: {fileID: 5647211949525258752, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_StringArgument
+      value: BlueGoalPointRight
+      objectReference: {fileID: 0}
+    - target: {fileID: 5908379203104528567, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: SendCustomEvent
+      objectReference: {fileID: 0}
+    - target: {fileID: 5908379203104528567, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_StringArgument
+      value: OrangeGoalPointRight
+      objectReference: {fileID: 0}
+    - target: {fileID: 6872984662622954280, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalRIght
+      objectReference: {fileID: 0}
+    - target: {fileID: 6925692193267049782, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalOrange
+      objectReference: {fileID: 0}
+    - target: {fileID: 7083571649376220872, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalLeft
+      objectReference: {fileID: 0}
+    - target: {fileID: 7267016769243376492, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalPointOrange
+      objectReference: {fileID: 0}
+    - target: {fileID: 7488769586360831639, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalBlue
+      objectReference: {fileID: 0}
+    - target: {fileID: 8670668628177991428, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: CaromGoalPointMenu Variant
+      objectReference: {fileID: 0}
+    - target: {fileID: 9086345430032634535, guid: 056851402b9186e4486f8215246c9e56,
+        type: 3}
+      propertyPath: m_Name
+      value: GoalRIght
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 056851402b9186e4486f8215246c9e56, type: 3}
