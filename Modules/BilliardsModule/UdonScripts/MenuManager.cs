@@ -7,6 +7,7 @@
 #define EIJIS_SEMIAUTOCALL
 #define EIJIS_10BALL
 #define EIJIS_BANKING
+#define EIJIS_EXTRA_GAMES
 
 #define EIJIS_CAROM_CUSTOM_GOAL_POINT
 
@@ -62,6 +63,16 @@ public class MenuManager : UdonSharpBehaviour
 #if EIJIS_CAROM_CUSTOM_GOAL_POINT
     private uint[] selectedGoalPointIndex = new uint[2];
 #endif
+#if EIJIS_EXTRA_GAMES
+    private Image gameModePanel;
+    private Sprite basicGamesImage;
+    private GameObject basicGamesButton;
+    private GameObject extraGamesButton;
+    private GameObject extraGamesKailunButton;
+    // private GameObject gameModeExtraBg;
+    // private GameObject gameModeTitleExtra;
+    [SerializeField] private Sprite gameModePanelKailun;
+#endif
 
     private Vector3 joinMenuPosition;
     private Quaternion joinMenuRotation;
@@ -90,6 +101,20 @@ public class MenuManager : UdonSharpBehaviour
 #endif
 #if EIJIS_CALLSHOT
             buttonCallLockOffColor = buttonCallLock.GetComponent<Image>().color;
+#endif
+#if EIJIS_EXTRA_GAMES
+            gameModePanel = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode").gameObject.GetComponent<Image>();
+            basicGamesImage = gameModePanel.sprite;
+            Transform buttons = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/Buttons");
+            if (!ReferenceEquals(null, buttons)) basicGamesButton = buttons.gameObject;
+            Transform buttonsExtra = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsExtra");
+            if (!ReferenceEquals(null, buttonsExtra)) extraGamesButton = buttonsExtra.gameObject;
+            Transform buttonsKailun = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ButtonsKailun");
+            if (!ReferenceEquals(null, buttonsKailun)) extraGamesKailunButton = buttonsKailun.gameObject;
+            // Transform bg_brown = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/BG_Brown");
+            // if (!ReferenceEquals(null, bg_brown)) gameModeExtraBg = bg_brown.gameObject;
+            // Transform gameModeTitleExtraTr = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/GameModeTitleExtra");
+            // if (!ReferenceEquals(null, gameModeTitleExtraTr)) gameModeTitleExtra = gameModeTitleExtraTr.gameObject;
 #endif
         }
 
@@ -182,6 +207,21 @@ public class MenuManager : UdonSharpBehaviour
     {
         string modeName = "";
         uint mode = (uint)table.GetProgramVariable("gameModeLocal");
+#if EIJIS_EXTRA_GAMES
+        if (table.is4Ball235 || table.isKailun)
+        {
+            gameModePanel.sprite = gameModePanelKailun;
+        }
+        else
+        {
+            gameModePanel.sprite = basicGamesImage;
+        }
+        if (!ReferenceEquals(null, basicGamesButton)) basicGamesButton.SetActive(!(table.is4Ball235 || table.isKailun));
+        if (!ReferenceEquals(null, extraGamesButton)) extraGamesButton.SetActive(table.is4Ball235 || table.isKailun);
+        if (!ReferenceEquals(null, extraGamesKailunButton)) extraGamesKailunButton.SetActive(table.is4Ball235 || table.isKailun);
+        // if (!ReferenceEquals(null, gameModeExtraBg)) gameModeExtraBg.SetActive(table.is4Ball235 || table.isKailun);
+        // if (!ReferenceEquals(null, gameModeTitleExtra)) gameModeTitleExtra.SetActive(table.is4Ball235 || table.isKailun);
+#endif
         Transform selection = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ModeSelection");
         Transform selectionPoint;
         switch (mode)
@@ -247,6 +287,16 @@ public class MenuManager : UdonSharpBehaviour
             case BilliardsModule.GAMEMODE_0CUSHION:
                 modeName = table._translations.Get("0-Cushion");
                 selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/0Cushion");
+                table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_4BALL235:
+                modeName = table._translations.Get("4 Ball 2-3-5");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/4ball235");
+                table.setTransform(selectionPoint, selection, true);
+                break;
+            case BilliardsModule.GAMEMODE_KAILUN:
+                modeName = table._translations.Get("Kailun");
+                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/Kailun");
                 table.setTransform(selectionPoint, selection, true);
                 break;
 #endif
@@ -488,6 +538,18 @@ public class MenuManager : UdonSharpBehaviour
     {
         table._TriggerGameStart();
     }
+#if EIJIS_EXTRA_GAMES
+    public void BasicGamePage()
+    {
+        if (!(table.is4Ball235 || table.isKailun)) return;
+        table._TriggerGameModeChanged(0);
+    }
+    public void ExtraGamePage()
+    {
+        if (table.is4Ball235 || table.isKailun) return;
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_4BALL235);
+    }
+#endif
     public void Mode8Ball()
     {
         table._TriggerGameModeChanged(0);
@@ -526,6 +588,14 @@ public class MenuManager : UdonSharpBehaviour
     public void Mode0Cushion()
     {
         table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_0CUSHION);
+    }
+    public void Mode4Ball235()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_4BALL235);
+    }
+    public void ModeKailun()
+    {
+        table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_KAILUN);
     }
 #endif
 #if EIJIS_BANKING
@@ -773,6 +843,14 @@ public class MenuManager : UdonSharpBehaviour
             else if (button.name == "0Cushion")
             {
                 table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_0CUSHION);
+            }
+            else if (button.name == "4Ball235")
+            {
+                table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_4BALL235);
+            }
+            else if (button.name == "Kailun")
+            {
+                table._TriggerGameModeChanged(BilliardsModule.GAMEMODE_KAILUN);
             }
 #endif
             else if (button.name == "Snooker6Red")

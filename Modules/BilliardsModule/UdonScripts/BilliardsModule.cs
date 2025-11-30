@@ -16,6 +16,10 @@
 #define CHEESE_ISSUE_FIX
 #define EIJIS_BANKING
 #define EIJIS_CAROM_CUSTOM_GOAL_POINT
+#define EIJIS_EXTRA_GAMES
+#define EIJIS_4BALL235
+#define EIJIS_KAILUN
+
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -32,6 +36,8 @@
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_FINDLOGIC
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION
 // #define EIJIS_DEBUG_BANKING
+// #define EIJIS_DEBUG_KAILUN
+// #define EIJIS_DEBUG_KAILUN_POCKETED
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -58,8 +64,8 @@ using Cheese;
 public class BilliardsModule : UdonSharpBehaviour
 {
     [NonSerialized] public readonly string[] DEPENDENCIES = new string[] { nameof(CameraOverrideModule) };
-#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL
-    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball)";
+#if EIJIS_SNOOKER15REDS || EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_4BALL235 || EIJIS_KAILUN
+    [NonSerialized] public readonly string VERSION = "6.0.0 (15Reds|Pyramid|Carom|10Ball|Kailun)";
 #else
     [NonSerialized] public readonly string VERSION = "6.0.0";
 #endif
@@ -157,8 +163,8 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public AudioSource aud_main;
     [NonSerialized] public UdonBehaviour callbacks;
 #if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING
-    private Vector3[][] initialPositions = new Vector3[12][];
-    private uint[] initialBallsPocketed = new uint[12];
+    private Vector3[][] initialPositions = new Vector3[14][];
+    private uint[] initialBallsPocketed = new uint[14];
 #else
     private Vector3[][] initialPositions = new Vector3[5][];
     private uint[] initialBallsPocketed = new uint[5];
@@ -418,6 +424,8 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public const uint GAMEMODE_2CUSHION = 7u;
     [NonSerialized] public const uint GAMEMODE_1CUSHION = 8u;
     [NonSerialized] public const uint GAMEMODE_0CUSHION = 9u;
+    [NonSerialized] public const uint GAMEMODE_4BALL235 = 12u;
+    [NonSerialized] public const uint GAMEMODE_KAILUN = 13u;
 #endif
 #if EIJIS_10BALL
     [NonSerialized] public const uint GAMEMODE_10BALL = 10u;
@@ -545,6 +553,8 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_PYRAMID
     [NonSerialized] public bool isPyramid = false;
     [NonSerialized] public bool isChinese8Ball = false;
+    [NonSerialized] public bool is4Ball235 = false;
+    [NonSerialized] public bool isKailun = false;
 #endif
 #if EIJIS_CAROM
     [NonSerialized] public bool is3Cusion = false;
@@ -1424,6 +1434,9 @@ public class BilliardsModule : UdonSharpBehaviour
 #if EIJIS_TABLE_LABEL
         Debug.Log("[BilliardsModule" + logLabel + "] latest game state is " + networkingManager._EncodeGameState());
 #endif
+#if EIJIS_DEBUG_KAILUN
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_OnRemoteDeserialization() STEP_STATE re-use pushOutStateLocal = {pushOutStateLocal}, pushOutStateSynced = {networkingManager.pushOutStateSynced}");
+#endif
 
         lastActionTime = Time.time;
         waitingForUpdate = false;
@@ -1597,10 +1610,12 @@ public class BilliardsModule : UdonSharpBehaviour
             is2Cusion = gameModeLocal == GAMEMODE_2CUSHION;
             is1Cusion = gameModeLocal == GAMEMODE_1CUSHION;
             is0Cusion = gameModeLocal == GAMEMODE_0CUSHION;
-#if EIJIS_BANKING
+            is4Ball235 = gameModeLocal == GAMEMODE_4BALL235;
+            isKailun = gameModeLocal == GAMEMODE_KAILUN;
+#if EIJIS_BANKING || EIJIS_4BALL235 || EIJIS_KAILUN
             isBanking = gameModeLocal == GAMEMODE_BANKING;
             cushionHitGoal = is0Cusion ? 0 : ((is1Cusion || isBanking) ? 1 : (is2Cusion ? 2 : 3));
-            isCarom = isJp4Ball || isKr4Ball || is3Cusion || is2Cusion || is1Cusion || is0Cusion || isBanking;
+            isCarom = isJp4Ball || isKr4Ball || is3Cusion || is2Cusion || is1Cusion || is0Cusion || isBanking || is4Ball235 || isKailun;
 #else
             cushionHitGoal = is0Cusion ? 0 : (is1Cusion ? 1 : (is2Cusion ? 2 : 3));
             isCarom = isJp4Ball || isKr4Ball || is3Cusion || is2Cusion || is1Cusion || is0Cusion;
@@ -1829,7 +1844,11 @@ public class BilliardsModule : UdonSharpBehaviour
         for (int i = 0; i < cueControllers.Length; i++) cueControllers[i]._RefreshRenderer();
 
         Array.Clear(fbScoresLocal, 0, 2);
+#if EIJIS_KAILUN
+        auto_pocketblockers.SetActive(isCarom && !isKailun);
+#else
         auto_pocketblockers.SetActive(isCarom);
+#endif
 #if EIJIS_10BALL
 #if EIJIS_PYRAMID
         marker9ball.SetActive(is9Ball || is10Ball || isPyramid);
@@ -2076,7 +2095,11 @@ public class BilliardsModule : UdonSharpBehaviour
         {
             fourBallCueBallLocal = fourBallCueBallSynced;
         }
+#if EIJIS_KAILUN
+        if (!isCarom || isKailun) return;
+#else
         if (!isCarom) return;
+#endif
 
         fourBallCueBallLocal = fourBallCueBallSynced;
 
@@ -2271,6 +2294,12 @@ public class BilliardsModule : UdonSharpBehaviour
         fallOffFoul = false;
         currentPhysicsManager.SendCustomEvent("_ResetSimulationVariables");
         numBallsPocketedThisTurn = 0;
+#if EIJIS_KAILUN
+        for (int i = 0; i < pocketedBallIdByOrder.Length; i++)
+        {
+            pocketedBallIdByOrder[i] = -1;
+        }
+#endif
 
         if (Networking.LocalPlayer.playerId == simulationOwnerID || fake)
         {
@@ -2404,6 +2433,9 @@ public class BilliardsModule : UdonSharpBehaviour
 
         _LogInfo($"onRemotePushOutStateChanged pushOutState={pushOutStateSynced}");
         pushOutStateLocal = pushOutStateSynced;
+#if EIJIS_KAILUN
+        if (isKailun) return;
+#endif
         graphicsManager._UpdatePushOut(pushOutStateLocal);
         if (!stateIdChanged)
         {
@@ -2574,17 +2606,126 @@ public class BilliardsModule : UdonSharpBehaviour
                     }
                 }
                 break;
+#if EIJIS_4BALL235
+            case GAMEMODE_4BALL235:
+                if (firstHit == 0)
+                {
+                    firstHit = dstId;
+                    break;
+                }
+                if (secondHit == 0)
+                {
+                    if (dstId != firstHit)
+                    {
+                        secondHit = dstId;
+                        bool redOnly = (firstHit != 13 && secondHit != 13);
+                        handle4Ball235Hit(ballsP[dstId], !redOnly);
+                    }
+                    break;
+                }
+                if (thirdHit == 0)
+                {
+                    if (dstId != firstHit && dstId != secondHit)
+                    {
+                        thirdHit = dstId;
+                        bool notRed = (thirdHit == 13);
+                        handle4Ball235Hit(ballsP[dstId], notRed);
+                    }
+                    break;
+                }
+                break;
+#endif
+#if EIJIS_KAILUN
+            case GAMEMODE_KAILUN:
+#if EIJIS_DEBUG_KAILUN
+                // _LogInfo($"EIJIS_DEBUG  hit STEP_STATE re-use pushOutStateLocal = {pushOutStateLocal}, fbMadePoint = {fbMadePoint}, fbMadeFoul = {fbMadeFoul}");
+#endif
+                if (firstHit == 0)
+                {
+                    firstHit = dstId;
+#if false // EIJIS_KAILUN_NEED_YELLOW_FIRST_ON_OPENING_SHOT
+                    bool isOnBreakShot = colorTurnLocal;
+                    if (isOnBreakShot && dstId != 13)
+                    {
+                        graphicsManager._SpawnKailunWrongHit(ballsP[dstId]);
+                        fbMadeFoul = true;
+                    }
+#endif
+                    break;
+                }
+                byte currentStep = pushOutStateLocal; // currentStep re-use variable
+                if (secondHit == 0)
+                {
+                    if (dstId != firstHit)
+                    {
+#if EIJIS_DEBUG_KAILUN
+                        _LogInfo($"EIJIS_DEBUG  hit2 STEP_STATE re-use currentStep = {currentStep}, fbMadePoint = {fbMadePoint}, fbMadeFoul = {fbMadeFoul}");
+#endif
+                        secondHit = dstId;
+                        bool redOnly = (firstHit != 13 && secondHit != 13);
+                        if (((currentStep == 0 && !redOnly) || (currentStep == 1 && redOnly)) && !fbMadeFoul)
+                        {
+                            fbMadePoint = true;
+                            graphicsManager._SpawnCushionTouch(ballsP[dstId], currentStep);
+                        }
+                        else if (currentStep == 2)
+                        {
+                            graphicsManager._SpawnCushionTouch(ballsP[dstId], currentStep);
+                        }
+                        else
+                        {
+                            graphicsManager._SpawnKailunWrongHit(ballsP[dstId]);
+                            fbMadeFoul = true;
+                        }
+                    }
+
+#if EIJIS_DEBUG_KAILUN
+                    // _LogInfo($"EIJIS_DEBUG  STEP_STATE re-use pushOutStateLocal = {pushOutStateLocal}, fbMadePoint = {fbMadePoint}, fbMadeFoul = {fbMadeFoul}");
+#endif
+                    break;
+                }
+                if (thirdHit == 0)
+                {
+                    if (dstId != firstHit && dstId != secondHit)
+                    {
+#if EIJIS_DEBUG_KAILUN
+                        _LogInfo($"EIJIS_DEBUG  hit3 STEP_STATE re-use currentStep = {currentStep}, fbMadePoint = {fbMadePoint}, fbMadeFoul = {fbMadeFoul}");
+#endif
+                        thirdHit = dstId;
+                        if (!fbMadeFoul)
+                        {
+                            if (currentStep == 2 && !fbMadePoint)
+                            {
+                                fbMadePoint = true;
+                                handle4BallHit(ballsP[dstId], true);
+                            }
+                            else 
+                            {
+                                graphicsManager._SpawnKailunWrongHit(ballsP[dstId]);
+                                fbMadeFoul = true;
+                            }
+                        }
+                    }
+                }
+                break;
+#endif
 #endif
         }
     }
 
     private int numBallsPocketedThisTurn;
+#if EIJIS_KAILUN
+    private int[] pocketedBallIdByOrder = new int[MAX_BALLS];
+#endif
 #if EIJIS_CALLSHOT
     public void _TriggerPocketBall(int id, int pocketId)
 #else
     public void _TriggerPocketBall(int id, bool outOfBounds)
 #endif
     {
+#if EIJIS_DEBUG_KAILUN_POCKETED
+        _LogInfo($"EIJIS_DEBUG BilliardsModule::_TriggerPocketBall( id = {id}, pocketId = {pocketId})");
+#endif
         uint total = 0U;
 
         // Get total for X positioning
@@ -2641,6 +2782,31 @@ public class BilliardsModule : UdonSharpBehaviour
             ballsP[id] = k_rack_position + (float)total * k_BALL_DIAMETRE * k_rack_direction;
         }
         ballsPocketedLocal ^= 1U << id;
+#if EIJIS_KAILUN
+        if (isKailun)
+        {
+            for (int i = 0; i < pocketedBallIdByOrder.Length; i++)
+            {
+                if (pocketedBallIdByOrder[i] < 0)
+                {
+                    pocketedBallIdByOrder[i] = id;
+                    break;
+                }
+            }
+#if EIJIS_DEBUG_KAILUN_POCKETED
+            _LogInfo($"EIJIS_DEBUG  total = {total}");
+            _LogInfo($"EIJIS_DEBUG  pocketedBallIdByOrder = [{pocketedBallIdByOrder[0]}, {pocketedBallIdByOrder[1]}, {pocketedBallIdByOrder[2]}, {pocketedBallIdByOrder[3]} ...]");
+            _LogInfo($"EIJIS_DEBUG  STEP_STATE re-use pushOutStateLocal = {pushOutStateLocal}, pushOutStateSynced = {networkingManager.pushOutStateSynced}");
+            _LogInfo($"EIJIS_DEBUG  fallOffFoul = {fallOffFoul}, ballsPocketedLocal = {ballsPocketedLocal:X4}, ballsPocketedLocal & 0xE001u = {(ballsPocketedLocal & 0xE001u):X4}");
+#endif
+            byte currentStep = pushOutStateLocal; // currentStep re-use variable
+            if (currentStep == 2 && !fbMadePoint && !fallOffFoul && (ballsPocketedLocal & 0xE001u) == 0xE001u)
+            {
+                fbMadePoint = true;
+                handle4BallHit(balls[id].transform.localPosition, true);
+            }
+        }
+#endif
 
 #if EIJIS_CALLSHOT
         bool callSuccess = ((calledBallsLocal & (0x1u << id)) != 0) && ((pointPocketsLocal & (0x1u << pocketId)) != 0);
@@ -2795,6 +2961,9 @@ public class BilliardsModule : UdonSharpBehaviour
         _LogInfo($"  pushOutState {PushOutState[pushOutStateLocal]}({pushOutStateLocal})");
 #endif
         bool pushOut = false;
+#if EIJIS_KAILUN
+        if (isKailun) { ; /* nop */ } else 
+#endif
         if (pushOutStateLocal == PUSHOUT_BEFORE_BREAK)
         {
 #if EIJIS_DEBUG_PUSHOUT
@@ -3212,6 +3381,34 @@ public class BilliardsModule : UdonSharpBehaviour
                 winCondition = fbScoresLocal[teamIdLocal] >= (teamIdLocal == 0 ? player1GoalLocal : player2GoalLocal);
 #else
                 winCondition = fbScoresLocal[teamIdLocal] >= 10;
+#endif
+#if EIJIS_KAILUN
+                byte currentStep = pushOutStateLocal; // currentStep re-use variable
+#if EIJIS_DEBUG_KAILUN
+                _LogInfo($"EIJIS_DEBUG SIMEND STEP_STATE re-use pushOutStateSynced = {currentStep}, fbMadePoint = {fbMadePoint}, fbMadeFoul = {fbMadeFoul}");
+#endif
+                if (fbMadePoint && !fbMadeFoul)
+                {
+                    currentStep++;
+                }
+                else
+                {
+#if EIJIS_DEBUG_KAILUN
+                    _LogInfo($"EIJIS_DEBUG  STEP_STATE TO 0");
+#endif
+                    currentStep = 0;
+                }
+                if (2 < currentStep)
+                {
+                    currentStep = 0;
+                }
+                pushOutStateLocal = currentStep; // currentStep re-use variable
+#if EIJIS_DEBUG_KAILUN
+                _LogInfo($"EIJIS_DEBUG SIMEND STEP_STATE re-use pushOutStateLocal = {pushOutStateLocal}, pushOutStateSynced = {networkingManager.pushOutStateSynced}");
+#endif
+#if false // EIJIS_KAILUN_NEED_YELLOW_FIRST_ON_OPENING_SHOT
+                colorTurnLocal = false; // colorTurnLocal tracks if it's the break
+#endif
 #endif
             }
 #if EIJIS_PYRAMID
@@ -3776,8 +3973,8 @@ public class BilliardsModule : UdonSharpBehaviour
         float k_BALL_PL_X = k_BALL_RADIUS; // break placement X
         float k_BALL_PL_Y = Mathf.Sin(60 * Mathf.Deg2Rad) * k_BALL_DIAMETRE; // break placement Y
         float quarterTable = k_TABLE_WIDTH / 2;
-#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING
-        for (int i = 0; i < 12; i++)
+#if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING || EIJIS_4BALL235 || EIJIS_KAILUN
+        for (int i = 0; i < 14; i++)
 #else
         for (int i = 0; i < 5; i++)
 #endif
@@ -3985,6 +4182,23 @@ public class BilliardsModule : UdonSharpBehaviour
             // 0 ～ 2-Cushion
             initialBallsPocketed[i] = initialBallsPocketed[6];
             initialPositions[i] = initialPositions[6];
+        }
+#endif
+#if EIJIS_4BALL235
+        
+        {
+            // 4 ball (2-3-5)
+            initialBallsPocketed[GAMEMODE_4BALL235] = initialBallsPocketed[2];
+            initialPositions[GAMEMODE_4BALL235] = initialPositions[2];
+        }
+#endif
+#if EIJIS_KAILUN
+        
+        {
+            // Kailun
+            initialBallsPocketed[GAMEMODE_KAILUN] = initialBallsPocketed[2];
+            Array.Copy(initialPositions[2], initialPositions[GAMEMODE_KAILUN], initialPositions[2].Length);
+            initialPositions[GAMEMODE_KAILUN][0] = new Vector3(-quarterTable, 0.0f, -0.178f);
         }
 #endif
 #if EIJIS_10BALL
@@ -4262,7 +4476,11 @@ public class BilliardsModule : UdonSharpBehaviour
         graphicsManager._UpdateScorecard();
     }
 
+#if EIJIS_4BALL235
+    private void handle4BallHitGood(Vector3 p, int point = 1)
+#else
     private void handle4BallHitGood(Vector3 p)
+#endif
     {
         fbMadePoint = true;
         aud_main.PlayOneShot(snd_PointMade, 1.0f);
@@ -4272,7 +4490,14 @@ public class BilliardsModule : UdonSharpBehaviour
 #else
         if (fbScoresLocal[teamIdLocal] < 10)
 #endif
+#if EIJIS_4BALL235
+        {
+            int score = fbScoresLocal[teamIdLocal] + point;
+            fbScoresLocal[teamIdLocal] = (byte)(score < 0 ? 0 : (255 < score ? 255 : score));
+        }
+#else
             fbScoresLocal[teamIdLocal]++;
+#endif
     }
 
     private void handle4BallHitBad(Vector3 p)
@@ -4284,6 +4509,18 @@ public class BilliardsModule : UdonSharpBehaviour
             fbScoresLocal[teamIdLocal]--;
     }
 
+#if EIJIS_4BALL235
+    private void handle4Ball235Hit(Vector3 loc, bool twoPoint)
+    {
+#if EIJIS_ISSUE_FIX // 四つ球で的玉が場外してもポイントできる | player can point even if the target ball is fall out of the field in a 4ball. https://github.com/Sacchan-VRC/MS-VRCSA-Billiards/pull/9/commits/5fb055b98df3660f3f2dde2e8f8eb245d4f1cbac
+        if (fallOffFoul) return;
+#endif
+        handle4BallHitGood(loc, twoPoint ? 2 : 3);
+        graphicsManager._SpawnFourBall235Point(loc, twoPoint);
+        graphicsManager._UpdateScorecard();
+    }
+
+#endif
     private void onLocalTeamWin(uint winner)
     {
         Debug.Log("onLocalTeamWin");
@@ -4644,6 +4881,9 @@ public class BilliardsModule : UdonSharpBehaviour
 
     public void fourBallReturnBalls()
     {
+#if EIJIS_DEBUG_KAILUN_POCKETED
+        _LogInfo("EIJIS_DEBUG BilliardsModule::fourBallReturnBalls()");
+#endif
         bool zeroPocketed = false;
         bool thirteenPocketed = false;
         bool fourteenPocketed = false;
@@ -4720,6 +4960,70 @@ public class BilliardsModule : UdonSharpBehaviour
                                 ballsP[touchBallId_2] = threeBallReturnPositions[Array.IndexOf(threeBalls, touchBallId_2)];
                             }
                         }
+                    }
+                }
+            }
+            
+            return;
+        }
+#endif
+#if EIJIS_KAILUN
+        if (isKailun)
+        {
+#if EIJIS_DEBUG_KAILUN_POCKETED
+            _LogInfo($"EIJIS_DEBUG  pocketedBallIdByOrder = [{pocketedBallIdByOrder[0]}, {pocketedBallIdByOrder[1]}, {pocketedBallIdByOrder[2]}, {pocketedBallIdByOrder[3]} ...]");
+#endif
+            float quarterTable = k_TABLE_WIDTH / 2;
+            float splitBy8Table = quarterTable / 2;
+            Vector3[] fourBallReturnPositions = new[]
+            {
+                new Vector3(quarterTable, 0.0f, 0.0f),
+                new Vector3(-quarterTable, 0.0f, 0.0f),
+                Vector3.zero,
+                new Vector3(quarterTable + splitBy8Table, 0.0f, 0.0f)
+            };
+            
+            bool[] fourBallsPocketed = new bool[] { false, false, false, false };
+            for (int i = 0; i < pocketedBallIdByOrder.Length; i++)
+            {
+                int ballId = pocketedBallIdByOrder[i];
+
+                if (ballId < 0)
+                {
+                    break;
+                }
+
+                ballsP[ballId] = fourBallReturnPositions[i];
+                fourBallsPocketed[i] = true;
+#if EIJIS_DEBUG_KAILUN_POCKETED
+                _LogInfo($"EIJIS_DEBUG  i = {i}, fourBallReturnPositions[{i}] = {fourBallReturnPositions[1].x}, ballsP[{ballId}] = {ballsP[ballId].x}");
+#endif
+            }
+#if EIJIS_DEBUG_KAILUN_POCKETED
+            _LogInfo($"EIJIS_DEBUG  fourBallsPocketed = [{fourBallsPocketed[0]}, {fourBallsPocketed[1]}, {fourBallsPocketed[2]}, {fourBallsPocketed[3]}]");
+#endif
+            
+            for (int i = 0; i < fourBallsPocketed.Length; i++)
+            {
+                if (fourBallsPocketed[i])
+                {
+                    int ballId = pocketedBallIdByOrder[i];
+
+                    if (ballId < 0)
+                    {
+                        break;
+                    }
+
+                    int j = i;
+                    while (CheckIfBallTouchingBall(ballId) > -1)
+                    {
+                        j++;
+                        if (j == fourBallReturnPositions.Length)
+                        {
+                            break;
+                        }
+                        
+                        ballsP[ballId] = fourBallReturnPositions[j];
                     }
                 }
             }

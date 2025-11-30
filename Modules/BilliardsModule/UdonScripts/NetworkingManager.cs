@@ -527,10 +527,14 @@ public class NetworkingManager : UdonSharpBehaviour
         {
             foulStateSynced = 1;
         }
+#if false // EIJIS_KAILUN_NEED_YELLOW_FIRST_ON_OPENING_SHOT
+        if (table.is8Ball || table.is9Ball || table.is10Ball || table.isKailun)
+#else
 #if EIJIS_10BALL
         if (table.is8Ball || table.is9Ball || table.is10Ball)
 #else
         if (table.is8Ball || table.is9Ball)
+#endif
 #endif
         {
             colorTurnSynced = true;// re-used to track if it's the break
@@ -938,12 +942,13 @@ public class NetworkingManager : UdonSharpBehaviour
     private void swapFourBallCueBalls()
     {
 #if EIJIS_CAROM
-#if EIJIS_BANKING
+#if EIJIS_BANKING || EIJIS_4BALL235
         if (gameModeSynced != 2 && gameModeSynced != 3 && 
             gameModeSynced != BilliardsModule.GAMEMODE_0CUSHION && 
             gameModeSynced != BilliardsModule.GAMEMODE_1CUSHION && 
             gameModeSynced != BilliardsModule.GAMEMODE_2CUSHION && 
             gameModeSynced != BilliardsModule.GAMEMODE_3CUSHION &&
+            gameModeSynced != BilliardsModule.GAMEMODE_4BALL235 &&
             gameModeSynced != BilliardsModule.GAMEMODE_BANKING) return;
 #else
         if (gameModeSynced != 2 && gameModeSynced != 3 && 

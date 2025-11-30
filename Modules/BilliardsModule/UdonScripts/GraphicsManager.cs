@@ -12,6 +12,9 @@
 #define EIJIS_BANKING
 #define EIJIS_CAROM_CUSTOM_GOAL_POINT
 
+#define EIJIS_4BALL235
+#define EIJIS_KAILUN
+
 // #define EIJIS_DEBUG_PIRAMIDSCORE
 // #define EIJIS_DEBUG_CALLSHOT_MARKER
 
@@ -29,6 +32,9 @@ public class GraphicsManager : UdonSharpBehaviour
 {
 	[Header("4 Ball")]
 	[SerializeField] GameObject fourBallPoint;
+#if EIJIS_4BALL235
+	[SerializeField] GameObject fourBall235Point;
+#endif
 	[SerializeField] Mesh fourBallMeshPlus;
 	[SerializeField] Mesh fourBallMeshMinus;
 	[Header("Snooker")]
@@ -38,6 +44,9 @@ public class GraphicsManager : UdonSharpBehaviour
 #if EIJIS_CUSHION_EFFECT
 	[Header("Carom")]
 	[SerializeField] GameObject[] caromCushionTouch;
+#endif
+#if EIJIS_KAILUN
+	[SerializeField] GameObject kailunWrongHit;
 #endif
 #if EIJIS_CALLSHOT
 	[Header("Pocket Billiard Call-shot")]
@@ -255,11 +264,31 @@ public class GraphicsManager : UdonSharpBehaviour
 		temp.y = fourBallPointTime * 0.5f;
 		fourBallPoint.transform.localPosition = temp;
 
+#if EIJIS_4BALL235
+		fourBall235Point.transform.localScale = new Vector3(scale, scale, scale);
+		temp = fourBall235Point.transform.localPosition;
+		temp.y = fourBallPointTime * 0.5f;
+		fourBall235Point.transform.localPosition = temp;
+
+#endif
+#if EIJIS_KAILUN
+		kailunWrongHit.transform.localScale = new Vector3(scale, scale, scale);
+		temp = kailunWrongHit.transform.localPosition;
+		temp.y = fourBallPointTime * 0.5f;
+		kailunWrongHit.transform.localPosition = temp;
+
+#endif
 		// Particle death
 		if (fourBallPointTime > 2.0f)
 		{
 			fourBallPointActive = false;
 			fourBallPoint.SetActive(false);
+#if EIJIS_4BALL235
+			fourBall235Point.SetActive(false);
+#endif
+#if EIJIS_KAILUN
+			kailunWrongHit.SetActive(false);
+#endif
 		}
 	}
 #if EIJIS_CUSHION_EFFECT
@@ -727,6 +756,34 @@ public class GraphicsManager : UdonSharpBehaviour
 		fourBallPoint.transform.localScale = Vector3.zero;
 		fourBallPoint.transform.LookAt(Networking.LocalPlayer.GetPosition());
 	}
+#if EIJIS_4BALL235
+	
+	public void _SpawnFourBall235Point(Vector3 pos, bool two)
+	{
+		fourBall235Point.SetActive(true);
+		fourBallPointActive = true;
+		fourBallPointTime = 0.1f;
+
+		fourBall235Point.GetComponent<MeshFilter>().sharedMesh = two ? fourBallMeshPlus : fourBallMeshMinus;
+		fourBall235Point.transform.localPosition = pos;
+		fourBall235Point.transform.localScale = Vector3.zero;
+		fourBall235Point.transform.LookAt(Networking.LocalPlayer.GetPosition());
+	}
+#endif
+#if EIJIS_KAILUN
+	
+	public void _SpawnKailunWrongHit(Vector3 pos)
+	{
+		kailunWrongHit.SetActive(true);
+		fourBallPointActive = true;
+		fourBallPointTime = 0.1f;
+
+		// kailunWrongHit.GetComponent<MeshFilter>().sharedMesh = fourBallMeshPlus;
+		kailunWrongHit.transform.localPosition = pos;
+		kailunWrongHit.transform.localScale = Vector3.zero;
+		kailunWrongHit.transform.LookAt(Networking.LocalPlayer.GetPosition());
+	}
+#endif
 #if EIJIS_CUSHION_EFFECT
 
 	public void _SpawnCushionTouch(Vector3 pos, int color)
@@ -1093,9 +1150,9 @@ int uniform_cue_colour;
 		scorecard_gameobject.SetActive(true);
 #if EIJIS_PYRAMID
 #if EIJIS_CAROM
-#if EIJIS_BANKING
+#if EIJIS_BANKING || EIJIS_4BALL235 || EIJIS_KAILUN
 		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
-				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion || table.isBanking ? 2 : table.gameModeLocal)
+				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion || table.isBanking || table.is4Ball235 || table.isKailun ? 2 : table.gameModeLocal)
 			));
 #else
 		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
@@ -1261,7 +1318,11 @@ int uniform_cue_colour;
 			pColour2 = table.k_colour_foul;
 			pColourErr = table.k_colour_foul;
 
+#if EIJIS_KAILUN
+			ballMaterial.SetTexture("_MainTex", table.textureSets[table.isKailun ? 8 : 1]);
+#else
 			ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+#endif
 		}
 #if EIJIS_SNOOKER15REDS
 		else if (table.isSnooker)
@@ -1319,6 +1380,12 @@ int uniform_cue_colour;
 		table.markerCalledBall.SetActive(false);
 #endif
 		fourBallPoint.SetActive(false);
+#if EIJIS_4BALL235
+		fourBall235Point.SetActive(false);
+#endif
+#if EIJIS_KAILUN
+		kailunWrongHit.SetActive(false);
+#endif
 #if EIJIS_CUSHION_EFFECT
 		for (int i = 0; i < caromCushionTouch.Length; i++)
 		{
@@ -1571,7 +1638,11 @@ int uniform_cue_colour;
 
 	public void _UpdateFourBallCueBallTextures(uint fourBallCueBall)
 	{
+#if EIJIS_KAILUN
+		if (!table.isCarom || table.isKailun) return;
+#else
 		if (!table.isCarom) return;
+#endif
 
 		if (fourBallCueBall == 0)
 		{

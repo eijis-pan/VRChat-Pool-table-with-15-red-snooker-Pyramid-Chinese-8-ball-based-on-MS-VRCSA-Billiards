@@ -10,6 +10,8 @@
 #define EIJIS_10BALL
 #define EIJIS_BANKING
 
+#define EIJIS_KAILUN
+
 // #define HT8B_DRAW_REGIONS
 using System;
 using UdonSharp;
@@ -444,7 +446,11 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
         // Run main simulation / inter-ball collision
 
         uint ball_bit = 0x1u;
+#if EIJIS_KAILUN
+        bool isCarom = table.isCarom && !table.isKailun;
+#else
         bool isCarom = table.isCarom;
+#endif
 #if EIJIS_MANY_BALLS
         for (int i = 0; i < BilliardsModule.MAX_BALLS; i++)
 #else

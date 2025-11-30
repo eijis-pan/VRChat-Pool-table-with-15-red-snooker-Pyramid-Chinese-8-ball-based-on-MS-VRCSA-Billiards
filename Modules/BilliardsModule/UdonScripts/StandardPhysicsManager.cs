@@ -8,6 +8,8 @@
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
 
+#define EIJIS_KAILUN
+
 //#define HT8B_DRAW_REGIONS
 using System;
 using BestHTTP.SecureProtocol.Org.BouncyCastle.Crypto.Modes.Gcm;
@@ -430,7 +432,11 @@ public class StandardPhysicsManager : UdonSharpBehaviour
         bool canCueBallBounceOffCushion = balls_P[0].y < k_BALL_RADIUS;
 
         table._BeginPerf(table.PERF_PHYSICS_CUSHION);
+#if EIJIS_KAILUN
+        if (table.isCarom && !table.isKailun)
+#else
         if (table.isCarom)
+#endif
         {
             if (canCueBallBounceOffCushion && moved[0]) _phy_ball_table_carom(0);
             if (moved[13]) _phy_ball_table_carom(13);
@@ -473,7 +479,11 @@ public class StandardPhysicsManager : UdonSharpBehaviour
             }
         }
 
+#if EIJIS_KAILUN
+        if (table.isCarom && !table.isKailun) return;
+#else
         if (table.isCarom) return;
+#endif
 
 #if EIJIS_SNOOKER15REDS
         if (table.isSnooker)
@@ -513,7 +523,11 @@ public class StandardPhysicsManager : UdonSharpBehaviour
 
         // Run triggers
         table._BeginPerf(table.PERF_PHYSICS_POCKET);
+#if EIJIS_KAILUN
+        if (!table.isCarom || table.isKailun)
+#else
         if (!table.isCarom)
+#endif
         {
 #if EIJIS_MANY_BALLS
             for (int i = 0; i < BilliardsModule.MAX_BALLS; i++)
