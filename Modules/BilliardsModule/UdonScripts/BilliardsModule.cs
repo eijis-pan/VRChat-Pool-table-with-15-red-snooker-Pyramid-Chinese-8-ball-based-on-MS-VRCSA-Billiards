@@ -20,6 +20,7 @@
 #define EIJIS_4BALL235
 #define EIJIS_KAILUN
 
+#define EIJIS_WORLDFORGROUP_STOPWATCH
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -162,6 +163,11 @@ public class BilliardsModule : UdonSharpBehaviour
     // globals
     [NonSerialized] public AudioSource aud_main;
     [NonSerialized] public UdonBehaviour callbacks;
+#if EIJIS_WORLDFORGROUP_STOPWATCH
+
+    [Header("World_for_group")]
+    public katsuo24_scripts.SimpleStopWatch.StopWatchCore stopWatchCore;
+#endif
 #if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING
     private Vector3[][] initialPositions = new Vector3[14][];
     private uint[] initialBallsPocketed = new uint[14];
@@ -1264,6 +1270,21 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
             }
         }
+#if EIJIS_WORLDFORGROUP_STOPWATCH
+
+        if (!ReferenceEquals(null, stopWatchCore))
+        {
+#if EIJIS_BANKING
+            if (isCarom && !isBanking)
+#else
+            if (isCarom)
+#endif
+            {
+                Networking.SetOwner(Networking.LocalPlayer, stopWatchCore.gameObject);
+                stopWatchCore.StopWatchResetStartIfStopped();
+            }
+        }
+#endif
 
         Debug.Log("_TriggerGameStart");
 
@@ -1382,6 +1403,16 @@ public class BilliardsModule : UdonSharpBehaviour
         }
         else if (allPlayersOffline || isAllowedPlayer || _IsModerator(Networking.LocalPlayer) || (Time.time - lastActionTime > 300) || allPlayersAway)
         {
+#if EIJIS_WORLDFORGROUP_STOPWATCH
+            if (!ReferenceEquals(null, stopWatchCore))
+            {
+                if (isCarom)
+                {
+                    Networking.SetOwner(Networking.LocalPlayer, stopWatchCore.gameObject);
+                    stopWatchCore.StopWatchPauseIfStarted();
+                }
+            }
+#endif
             _LogInfo("force resetting game");
             //infReset.text = "Game Reset!"; ClearResetInfo();
 
@@ -4524,6 +4555,20 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
     private void onLocalTeamWin(uint winner)
     {
+#if EIJIS_WORLDFORGROUP_STOPWATCH
+        if (!ReferenceEquals(null, stopWatchCore))
+        {
+#if EIJIS_BANKING
+            if (isCarom && !isBanking)
+#else
+            if (isCarom)
+#endif
+            {
+                Networking.SetOwner(Networking.LocalPlayer, stopWatchCore.gameObject);
+                stopWatchCore.StopWatchPauseIfStarted();
+            }
+        }
+#endif
         Debug.Log("onLocalTeamWin");
 
         _LogInfo($"onLocalTeamWin {(winner)}");
