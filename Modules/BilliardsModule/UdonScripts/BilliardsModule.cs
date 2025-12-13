@@ -4915,6 +4915,53 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
 #endif
 
+#if EIJIS_KAILUN
+        if (isKailun)
+        {
+#if EIJIS_DEBUG_KAILUN_POCKETED
+            _LogInfo($"EIJIS_DEBUG  pocketedBallIdByOrder = [{pocketedBallIdByOrder[0]}, {pocketedBallIdByOrder[1]}, {pocketedBallIdByOrder[2]}, {pocketedBallIdByOrder[3]} ...]");
+#endif
+            float quarterTable = k_TABLE_WIDTH / 2;
+            float splitBy8Table = quarterTable / 2;
+            Vector3[] fourBallReturnPositions = new[]
+            {
+                new Vector3(quarterTable, 0.0f, 0.0f),
+                new Vector3(-quarterTable, 0.0f, 0.0f),
+                Vector3.zero,
+                new Vector3(quarterTable + splitBy8Table, 0.0f, 0.0f)
+            };
+            
+            bool[] fourBallsPocketed = new bool[] { false, false, false, false };
+            int j = 0;
+            for (int i = 0; i < pocketedBallIdByOrder.Length; i++)
+            {
+                int ballId = pocketedBallIdByOrder[i];
+                if (ballId < 0)
+                {
+                    break;
+                }
+
+#if EIJIS_DEBUG_KAILUN_POCKETED
+                _LogInfo($"EIJIS_DEBUG  j = {j}, fourBallReturnPositions[{j}] = {fourBallReturnPositions[j].x}");
+#endif
+                ballsP[ballId] = fourBallReturnPositions[j++];
+                fourBallsPocketed[i] = true;
+                while (CheckIfBallTouchingBall(ballId) > -1 && j < fourBallReturnPositions.Length)
+                {
+#if EIJIS_DEBUG_KAILUN_POCKETED
+                    _LogInfo($"EIJIS_DEBUG  j = {j}, fourBallReturnPositions[{j}] = {fourBallReturnPositions[j].x}");
+#endif
+                    ballsP[ballId] = fourBallReturnPositions[j++];
+                }
+#if EIJIS_DEBUG_KAILUN_POCKETED
+                _LogInfo($"EIJIS_DEBUG  i = {i} ballsP[{ballId}] = {ballsP[ballId].x}");
+#endif
+            }
+#if EIJIS_DEBUG_KAILUN_POCKETED
+            _LogInfo($"EIJIS_DEBUG  fourBallsPocketed = [{fourBallsPocketed[0]}, {fourBallsPocketed[1]}, {fourBallsPocketed[2]}, {fourBallsPocketed[3]}]");
+#endif
+        }
+#endif
 #if EIJIS_CAROM
         ballsPocketedLocal = initialBallsPocketed[gameModeLocal];
 #else
@@ -4960,70 +5007,6 @@ public class BilliardsModule : UdonSharpBehaviour
                                 ballsP[touchBallId_2] = threeBallReturnPositions[Array.IndexOf(threeBalls, touchBallId_2)];
                             }
                         }
-                    }
-                }
-            }
-            
-            return;
-        }
-#endif
-#if EIJIS_KAILUN
-        if (isKailun)
-        {
-#if EIJIS_DEBUG_KAILUN_POCKETED
-            _LogInfo($"EIJIS_DEBUG  pocketedBallIdByOrder = [{pocketedBallIdByOrder[0]}, {pocketedBallIdByOrder[1]}, {pocketedBallIdByOrder[2]}, {pocketedBallIdByOrder[3]} ...]");
-#endif
-            float quarterTable = k_TABLE_WIDTH / 2;
-            float splitBy8Table = quarterTable / 2;
-            Vector3[] fourBallReturnPositions = new[]
-            {
-                new Vector3(quarterTable, 0.0f, 0.0f),
-                new Vector3(-quarterTable, 0.0f, 0.0f),
-                Vector3.zero,
-                new Vector3(quarterTable + splitBy8Table, 0.0f, 0.0f)
-            };
-            
-            bool[] fourBallsPocketed = new bool[] { false, false, false, false };
-            for (int i = 0; i < pocketedBallIdByOrder.Length; i++)
-            {
-                int ballId = pocketedBallIdByOrder[i];
-
-                if (ballId < 0)
-                {
-                    break;
-                }
-
-                ballsP[ballId] = fourBallReturnPositions[i];
-                fourBallsPocketed[i] = true;
-#if EIJIS_DEBUG_KAILUN_POCKETED
-                _LogInfo($"EIJIS_DEBUG  i = {i}, fourBallReturnPositions[{i}] = {fourBallReturnPositions[1].x}, ballsP[{ballId}] = {ballsP[ballId].x}");
-#endif
-            }
-#if EIJIS_DEBUG_KAILUN_POCKETED
-            _LogInfo($"EIJIS_DEBUG  fourBallsPocketed = [{fourBallsPocketed[0]}, {fourBallsPocketed[1]}, {fourBallsPocketed[2]}, {fourBallsPocketed[3]}]");
-#endif
-            
-            for (int i = 0; i < fourBallsPocketed.Length; i++)
-            {
-                if (fourBallsPocketed[i])
-                {
-                    int ballId = pocketedBallIdByOrder[i];
-
-                    if (ballId < 0)
-                    {
-                        break;
-                    }
-
-                    int j = i;
-                    while (CheckIfBallTouchingBall(ballId) > -1)
-                    {
-                        j++;
-                        if (j == fourBallReturnPositions.Length)
-                        {
-                            break;
-                        }
-                        
-                        ballsP[ballId] = fourBallReturnPositions[j];
                     }
                 }
             }
