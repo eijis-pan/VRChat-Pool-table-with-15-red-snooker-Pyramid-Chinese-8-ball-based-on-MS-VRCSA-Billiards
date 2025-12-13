@@ -150,7 +150,7 @@
             fixed4 leftComponent = BLACK;
             float leftStart = i.uv.x - OFFSET;
             // if (leftStart < leftEnd)
-            if (leftStart < leftEnd2)
+            if ((_GameMode == 2 || _GameMode == 3) && leftStart < leftEnd2)
             {
                   leftComponent = GLAY * round(length(base.gb));
             }
@@ -172,7 +172,7 @@
             fixed4 rightComponent = BLACK;
             float rightStart = 1.0 - i.uv.x - OFFSET;
             // if (rightStart < rightEnd)
-            if (rightStart < rightEnd2)
+            if ((_GameMode == 2 || _GameMode == 3) && rightStart < rightEnd2)
             {
                   rightComponent = GLAY * round(length(base.gb));
             }
