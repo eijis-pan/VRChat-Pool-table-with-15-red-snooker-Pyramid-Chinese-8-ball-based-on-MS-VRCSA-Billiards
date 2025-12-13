@@ -20,6 +20,7 @@
 #define EIJIS_4BALL235
 #define EIJIS_KAILUN
 
+#define EIJIS_DEFAULT_MODE_CHANGE
 #define EIJIS_WORLDFORGROUP_STOPWATCH
 
 // #define EIJIS_DEBUG_INITIALIZERACK
@@ -688,6 +689,19 @@ public class BilliardsModule : UdonSharpBehaviour
 #endif
         networkingManager.pointPocketsSynced = pointPocketsLocal;
         networkingManager.calledBallsSynced = calledBallsLocal;
+#endif
+#if EIJIS_DEFAULT_MODE_CHANGE
+#if false // 三つ玉大会モード
+        tableModelLocal = 1; // 9ft
+        networkingManager.tableModelSynced = (byte)tableModelLocal;
+        networkingManager.gameModeSynced = (byte)GAMEMODE_0CUSHION;
+        timerLocal = 60u; // 60sec
+        networkingManager.timerSynced = (byte)timerLocal;
+#else
+        tableModelLocal = 4; // 10ft 3C
+        networkingManager.tableModelSynced = (byte)tableModelLocal;
+        networkingManager.gameModeSynced = (byte)GAMEMODE_3CUSHION;
+#endif
 #endif
         practiceManager._Init(this);
         repositionManager._Init(this);
