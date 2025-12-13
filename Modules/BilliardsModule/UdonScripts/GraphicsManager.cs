@@ -16,6 +16,8 @@
 #define EIJIS_KAILUN
 
 #define EIJIS_ALT_DISPLAY
+#define EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+#define EIJIS_HIDE_POCKETED_BALL_RACKING
 
 // #define EIJIS_DEBUG_PIRAMIDSCORE
 // #define EIJIS_DEBUG_CALLSHOT_MARKER
@@ -1493,6 +1495,12 @@ int uniform_cue_colour;
 				// Recover Y position since its lost in networking
 				Vector3 rack_position = table.ballsP[i];
 				rack_position.y = table.k_rack_position.y;
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET && EIJIS_HIDE_POCKETED_BALL_RACKING
+				if (table.ignoreSidePocketOnCallShot && table.isSnooker15Red)
+				{
+					rack_position.y = -(table.tableSurface.position.y + table.k_BALL_DIAMETRE);
+				}
+#endif
 
 				table.balls[i].transform.localPosition = rack_position;
 			}
@@ -1812,6 +1820,14 @@ int uniform_cue_colour;
 #endif
 		for (int i = 0; i < table.pointPocketMarkers.Length; i++)
 		{
+#if EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+			if (table.ignoreSidePocketOnCallShot && 4 <= i)
+			{
+				table.pointPocketMarkerBlock[i].SetActive(false);
+				table.pointPocketMarkerSphere[i].SetActive(false);
+				continue;
+			}
+#endif
 			bool enable = (pointPockets & (0x1u << i)) != 0;
 #if EIJIS_CALLSHOT_E
 			table.pointPocketMarkers[i].SetActive(table.requireCallShotLocal);
