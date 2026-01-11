@@ -104,7 +104,7 @@ public class GraphicsManager : UdonSharpBehaviour
 
 	private BilliardsModule table;
 
-	private Material tableMaterial;
+	private Material[] tableMaterial;
 	private Material ballMaterial;
 	private Material shadowMaterial;
 
@@ -220,9 +220,11 @@ public class GraphicsManager : UdonSharpBehaviour
 		scorecard3 = scorecard3_gameobject.GetComponent<MeshRenderer>().material;
 #endif
 
-		if (table.tableModels[table.tableModelLocal].tableMaterial)
+		for (int i = 0; i < table.tableModels[table.tableModelLocal].tableMaterial.Length; i++)
+		{
 			tableMaterial = table.tableModels[table.tableModelLocal].tableMaterial;
-		else
+		}
+		if (table.tableModels[table.tableModelLocal].tableMaterial.Length == 0)
 			Debug.LogWarning("Table material not found, make sure you set Table Mesh correctly on Model Data");
 
 		_SetShadowsDisabled(false);
@@ -392,14 +394,19 @@ public class GraphicsManager : UdonSharpBehaviour
 	{
 		if (table.tableHook != null)
 		{
-			//table custom color by cheese
-			//float tableColor = (float)table.tableHook.GetProgramVariable("TableColor");
-			//float tableLightness = (float)table.tableHook.GetProgramVariable("TableColorLightness");
+			// //table custom color by cheese
+			// //float tableColor = (float)table.tableHook.GetProgramVariable("TableColor");
+			// //float tableLightness = (float)table.tableHook.GetProgramVariable("TableColorLightness");
 			float tableColor = table.tableHook.TableColor;
 			float tableLightness = table.tableHook.TableColorLightness;
-			tableMaterial.SetFloat("_ClothHue", tableColor);
-			tableMaterial.SetFloat("_ClothSaturation", tableLightness);
-			// Debug.Log((float)table.TableHook.GetProgramVariable("TableColor"));
+			// tableMaterial.SetFloat("_ClothHue", tableColor);
+			// tableMaterial.SetFloat("_ClothSaturation", tableLightness);
+			// // Debug.Log((float)table.TableHook.GetProgramVariable("TableColor"));
+			for (int i = 0; i < table.tableModels[table.tableModelLocal].tableMaterial.Length; i++)
+			{
+				tableMaterial[i].SetFloat("_ClothHue", tableColor);
+				tableMaterial[i].SetFloat("_ClothSaturation", tableLightness);
+			}
 		}
 		if (tableCurrentColour == tableSrcColour) return;
 
@@ -413,10 +420,9 @@ public class GraphicsManager : UdonSharpBehaviour
 		const float multiplier = 3.0f;
 #endif
 		tableCurrentColour = Color.Lerp(tableCurrentColour, tableSrcColour, Time.deltaTime * multiplier);
-		if (tableMaterial)
+		for (int i = 0; i < table.tableModels[table.tableModelLocal].tableMaterial.Length; i++)
 		{
-			tableMaterial.SetColor("_EmissionColor", tableCurrentColour);
-
+			tableMaterial[i].SetColor("_EmissionColor", tableCurrentColour);
 		}
 	}
 

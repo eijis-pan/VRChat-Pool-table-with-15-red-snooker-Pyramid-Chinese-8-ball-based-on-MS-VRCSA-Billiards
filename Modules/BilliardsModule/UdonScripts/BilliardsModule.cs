@@ -20,9 +20,13 @@
 #define EIJIS_4BALL235
 #define EIJIS_KAILUN
 
+#define EIJIS_LOG_PREFIX_COLOR_OFF
 #define EIJIS_DEFAULT_MODE_CHANGE
 #define EIJIS_WORLDFORGROUP_STOPWATCH
-#define EIJIS_CALLSHOT_IGNORE_SIDEPOCKET
+#define EIJIS_CALLSHOT_IGNORE_SIDEPOCKET // todo
+
+#define EIJIS_OCT_POCKETS
+#define EIJIS_DISABLE_POCKET
 
 // #define EIJIS_DEBUG_INITIALIZERACK
 // #define EIJIS_DEBUG_BALLCHOICE
@@ -39,8 +43,8 @@
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_FINDLOGIC
 // #define EIJIS_DEBUG_SEMIAUTO_CALL_AFTER_REPOSITION
 // #define EIJIS_DEBUG_BANKING
-// #define EIJIS_DEBUG_KAILUN
-// #define EIJIS_DEBUG_KAILUN_POCKETED
+#define EIJIS_DEBUG_KAILUN
+#define EIJIS_DEBUG_KAILUN_POCKETED
 
 #if UNITY_ANDROID
 #define HT_QUEST
@@ -85,6 +89,8 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public float k_POCKET_DEPTH_SIDE; // Depth of side pockets
     [NonSerialized] public float k_INNER_RADIUS_CORNER; // Pocket 'hitbox' cylinder
     [NonSerialized] public float k_INNER_RADIUS_SIDE; // Pocket 'hitbox' cylinder for corner pockets
+    [NonSerialized] public float k_INNER_RADIUS_CORNER2; // Pocket 'hitbox' cylinder
+    [NonSerialized] public float k_INNER_RADIUS_SIDE2; // Pocket 'hitbox' cylinder for corner pockets
     [NonSerialized] public float k_FACING_ANGLE_CORNER; // Angle of corner pocket inner walls
     [NonSerialized] public float k_FACING_ANGLE_SIDE; // Angle of side pocket inner walls
     [NonSerialized] public float K_BAULK_LINE; // Snooker baulk line distance from end of table
@@ -94,6 +100,13 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public float k_RAIL_HEIGHT_LOWER;
     [NonSerialized] public float k_RAIL_DEPTH_WIDTH;
     [NonSerialized] public float k_RAIL_DEPTH_HEIGHT;
+#if EIJIS_DISABLE_POCKET
+#if EIJIS_OCT_POCKETS
+    [NonSerialized] public bool[] disable_pockets = new bool[8]; // 0-3 Corner pockets es-ws-ns-ne (Head is North), 4-5 Side pockets e-w (6-7 additional side pockets s-n)
+#else    
+    [NonSerialized] public bool[] disable_pockets = new bool[6]; // 0-3 Corner pockets es-ws-ns-ne (Head is North), 4-5 Side pockets e-w
+#endif
+#endif
     // advanced physics  variables
     [NonSerialized] public float k_F_SLIDE; // bt_CoefSlide
     [NonSerialized] public float k_F_ROLL; // bt_CoefRoll
@@ -117,6 +130,8 @@ public class BilliardsModule : UdonSharpBehaviour
     [NonSerialized] public float k_BALL_DIAMETRE; // Diameter of balls
     [NonSerialized] public Vector3 k_vE; // corner pocket data
     [NonSerialized] public Vector3 k_vF; // side pocket data
+    [NonSerialized] public Vector3 k_vE2; // corner pocket data
+    [NonSerialized] public Vector3 k_vF2; // side pocket data
     [NonSerialized] public Vector3 k_rack_position = new Vector3();
     private Vector3 k_rack_direction = new Vector3();
     private GameObject auto_rackPosition;
@@ -169,6 +184,9 @@ public class BilliardsModule : UdonSharpBehaviour
 
     [Header("World_for_group")]
     public katsuo24_scripts.SimpleStopWatch.StopWatchCore stopWatchCore;
+#endif
+#if true // 正月専用
+    public bool NewYearMode = false;
 #endif
 #if EIJIS_PYRAMID || EIJIS_CAROM || EIJIS_10BALL || EIJIS_BANKING
     private Vector3[][] initialPositions = new Vector3[14][];
@@ -702,9 +720,24 @@ public class BilliardsModule : UdonSharpBehaviour
         timerLocal = 60u; // 60sec
         networkingManager.timerSynced = (byte)timerLocal;
 #else
+#if true // 正月専用
+        if (NewYearMode)
+        {
+            tableModelLocal = 0;
+            // tableModelLocal = 1;
+            networkingManager.gameModeSynced = (byte)GAMEMODE_4BALL235;
+        }
+        else
+        {
+            tableModelLocal = 4; // 10ft 3C
+            networkingManager.gameModeSynced = (byte)GAMEMODE_3CUSHION;
+        }
+        networkingManager.tableModelSynced = (byte)tableModelLocal;
+#else
         tableModelLocal = 4; // 10ft 3C
         networkingManager.tableModelSynced = (byte)tableModelLocal;
         networkingManager.gameModeSynced = (byte)GAMEMODE_3CUSHION;
+#endif
 #endif
 #endif
         practiceManager._Init(this);
@@ -4332,6 +4365,8 @@ public class BilliardsModule : UdonSharpBehaviour
         k_POCKET_DEPTH_SIDE = data.pocketDepthSide;
         k_INNER_RADIUS_CORNER = data.pocketInnerRadiusCorner;
         k_INNER_RADIUS_SIDE = data.pocketInnerRadiusSide;
+        k_INNER_RADIUS_CORNER2 = data.pocketInnerRadiusCorner2;
+        k_INNER_RADIUS_SIDE2 = data.pocketInnerRadiusSide2;
         k_FACING_ANGLE_CORNER = data.facingAngleCorner;
         k_FACING_ANGLE_SIDE = data.facingAngleSide;
         K_BAULK_LINE = -(k_TABLE_WIDTH - data.baulkLine);
@@ -4348,6 +4383,25 @@ public class BilliardsModule : UdonSharpBehaviour
         k_POCKET_RESTITUTION = data.bt_PocketRestitutionFactor;
         k_vE = data.cornerPocket;
         k_vF = data.sidePocket;
+        k_vE2 = data.cornerPocket2;
+        k_vF2 = data.sidePocket2;
+#if EIJIS_DISABLE_POCKET
+#if EIJIS_OCT_POCKETS
+        for (int i = 0; i < 8; i++)
+#else    
+        for (int i = 0; i < 6; i++)
+#endif
+        {
+            if (i < data.disablePockets.Length)
+            {
+                disable_pockets[i] = data.disablePockets[i];
+            }
+            else
+            {
+                disable_pockets[i] = 5 < i;
+            }
+        }
+#endif
 #if EIJIS_CALLSHOT
         pocketLocations[0] = k_vE;
         pocketLocations[1] = new Vector3(k_vE.x, k_vE.y, -k_vE.z);
@@ -4419,7 +4473,15 @@ public class BilliardsModule : UdonSharpBehaviour
         Transform guideDisplay2 = guideline2.gameObject.transform.Find("guide_display");
         guideDisplay2.localPosition = newpos;
         guideDisplay2.GetComponent<MeshRenderer>().material.SetVector("_Dims", new Vector4(k_vE.x, k_vE.z, 0, 0));
+#if true // 正月専用
+        if (NewYearMode && tableModelLocal == 1)
+        {
+            guideDisplay.GetComponent<MeshRenderer>().material.SetVector("_Dims", new Vector4(k_TABLE_WIDTH * 2, k_TABLE_HEIGHT * 2, 0, 0));
+            guideDisplay2.GetComponent<MeshRenderer>().material.SetVector("_Dims", new Vector4(k_TABLE_WIDTH * 2, k_TABLE_HEIGHT * 2, 0, 0));
+        }
+#else
         guideDisplay2.GetComponent<MeshRenderer>().material.SetVector("_Dims", new Vector4(k_vE.x, k_vE.z, 0, 0));
+#endif
 
         //set height of 9ball marker
         newpos = marker9ball.transform.localPosition; newpos.y = 0;
@@ -6478,13 +6540,61 @@ public void _RedrawDebugger() { }
         perfTimings[id] += Time.realtimeSinceStartup - perfStart[id];
         perfCounters[id]++;
     }
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+
+    private readonly string[] stripTags = new[]
+    {
+        "color"
+    };
+    
+    private string stripTag(string source)
+    {
+        int searchStartPos = 0;
+        string work = source;
+        bool tagFound = false;
+        do
+        {
+            tagFound = false;
+            int braceStartIndex = work.IndexOf('<', searchStartPos);
+            if (0 <= braceStartIndex && braceStartIndex + 1 < work.Length)
+            {
+                int braceEndIndex = work.IndexOf('>', braceStartIndex + 1);
+                if (0 < braceEndIndex)
+                {
+                    string tagToken = work.Substring(braceStartIndex + 1, braceEndIndex - (braceStartIndex + 1));
+                    foreach (string tag in stripTags)
+                    {
+                        if (tagToken.StartsWith(tag, StringComparison.OrdinalIgnoreCase) ||
+                            tagToken.StartsWith("/" + tag, StringComparison.OrdinalIgnoreCase))
+                        {
+                            work = work.Substring(0, braceStartIndex) +
+                                   work.Substring(braceEndIndex + 1);
+                            searchStartPos = braceStartIndex;
+                            tagFound = true;
+                        }
+                    }
+                }
+            }
+        } while (tagFound);
+
+        return work;
+    }
+#endif
 
     private void _log(string ln)
     {
 #if EIJIS_TABLE_LABEL
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+        Debug.Log("[BilliardsModule" + logLabel + "] " + stripTag(ln));
+#else
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>" + logLabel + "] " + ln);
+#endif
+#else
+#if EIJIS_LOG_PREFIX_COLOR_OFF
+        Debug.Log("[BilliardsModule] " + stripTag(ln));
 #else
         Debug.Log("[<color=\"#B5438F\">BilliardsModule</color>] " + ln);
+#endif
 #endif
 
 #if EIJIS_TABLE_LABEL

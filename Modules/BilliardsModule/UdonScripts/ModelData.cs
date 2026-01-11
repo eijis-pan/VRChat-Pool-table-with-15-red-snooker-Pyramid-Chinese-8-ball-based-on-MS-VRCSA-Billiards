@@ -1,4 +1,6 @@
-﻿using UdonSharp;
+﻿#define EIJIS_DISABLE_POCKET
+
+using UdonSharp;
 using UnityEngine;
 using UnityEditor;
 
@@ -15,20 +17,28 @@ public class ModelData : UdonSharpBehaviour
         [SerializeField] public float cushionRadius = 0.043f;
         [SerializeField] public float pocketWidthCorner = 0.1f;
         [SerializeField] public float pocketHeightCorner = 0.1f;
-        [SerializeField] public float pocketInnerRadiusCorner = 0.072f;
-        [SerializeField] public float facingAngleCorner = 133f; // corner pocket facing angle
+        [SerializeField] public float facingAngleCorner = 133f;
         [SerializeField] public float pocketRadiusSide = 0.1f;
         [SerializeField] public float pocketDepthSide = 0.04f;
-        [SerializeField] public float facingAngleSide = 104.93142f; // corner pocket facing angle
-        [SerializeField] public float pocketInnerRadiusSide = 0.072f;
+        [SerializeField] public float facingAngleSide = 104.93142f;
         [SerializeField] public float railHeightUpper = 0.038002f;
         public bool useRailHeightLower = false;
         [SerializeField] public float railHeightLower = 0.028472f;
         [SerializeField] public float railDepthWidth = 0.12f;
         [SerializeField] public float railDepthHeight = 0.12f;
-
-        [SerializeField] public Vector3 cornerPocket = new Vector3(11.087f, 0, 10.63f);
-        [SerializeField] public Vector3 sidePocket = new Vector3(0, 0, 10.662f);
+        [SerializeField] public float pocketInnerRadiusCorner = 0.072f;
+        [SerializeField] public float pocketInnerRadiusCorner2 = 0.08f;
+        [SerializeField] public float pocketInnerRadiusSide = 0.072f;
+        [SerializeField] public float pocketInnerRadiusSide2 = 0.08f;
+        [SerializeField] public Vector3 cornerPocket = new Vector3(1.09f, 0, 0.633f);
+        [SerializeField] public Vector3 cornerPocket2 = new Vector3(1.12f, 0, 0.66f);
+        [SerializeField] public Vector3 sidePocket = new Vector3(0, 0, 0.665f);
+        [SerializeField] public Vector3 sidePocket2 = new Vector3(0, 0, 0.7f);
+#if EIJIS_DISABLE_POCKET
+        
+        [Tooltip("0-3 Corner pockets es-ws-ns-ne (Head is North), 4-5 Side pockets e-w (6-7 additional side pockets s-n)")]
+        [SerializeField] public bool[] disablePockets;
+#endif
 
         [Header("Ball-Table Coefficients:")]
 
@@ -101,10 +111,9 @@ public class ModelData : UdonSharpBehaviour
         [SerializeField, Range(0.5f, 0.98f)] public float bc_CoefRestitution = 0.85f; // k_E_C
 
 
-        [Tooltip("This option overrides all values above and uses a Dynamic Emperically determined Restitution provided by Han05 Paper) " +
+        [Tooltip("since Version 0.5M, This option overrides all values above and uses another Fixed Linear Dynamic Restitution) " +
                 "\n\n<b>[Default - OFF]</b>" +
-                "\n\n<i>(this resolution seems to works well, but results in shots may vary a lot, usually the 3rd or 2nd Bounce of the cushion may be offline by some margin)</i>" +
-                "\n\n<i>(although we dont recommend it, it may prove usefull later</i>")]
+                "\n\n<i>(this resolution seems to work well, but results in shots may vary a little)</i>")]
         [SerializeField] public bool bc_DynRestitution = false; // isDynamicRestitution
 
 
@@ -115,7 +124,7 @@ public class ModelData : UdonSharpBehaviour
         [Tooltip("This parameter seems to work best at Dynamic Ranges and by default it is emperically determined and HardCoded." +
                 "\n\n if you wish to use a constant, you can do it here by checking the above bool! " +
                 "\n\n<b>[Valid Ranges are 0.2 - 0.4]</b>")]
-        [SerializeField, Range(0.2f, 0.4f)] public float bc_ConstFriction = 0.2f; // k_Cushion_MU
+        [SerializeField, Range(0.1f, 0.4f)] public float bc_ConstFriction = 0.2f; // k_Cushion_MU
 
 
         /// End of Cushion Model Header ---
@@ -155,16 +164,18 @@ public class ModelData : UdonSharpBehaviour
         [SerializeField] public Transform CueBlue;
         [SerializeField] public float DesktopUIScaleFactor = 1.08f;
 
-        [System.NonSerialized] public Material tableMaterial;
+        [System.NonSerialized] public Material[] tableMaterial;
         public void _Init()
         {
-                // renderer
-            MeshRenderer tableMeshR = tableMesh.GetComponent<MeshRenderer>();
-            if (tableMeshR)           //一整个无语住了,可有可无的代码让我debug半天,注释了才能用那个调桌子颜色--------呃呃呃,注释了之后桌子不改回合颜色了
-            {
-                tableMaterial = tableMeshR.material; // create a new instance for this table
-                tableMaterial.name = " for " + gameObject.name;
-                tableMeshR.material = tableMaterial;
-            }
-    }
+                MeshRenderer[] tableMeshR = tableMesh.GetComponentsInChildren<MeshRenderer>();
+                for (int i = 0; i < tableMeshR.Length; i++)
+                {
+                        tableMaterial = tableMeshR[i].materials; // create a new instance for this table
+                        for (int o = 0; o < tableMaterial.Length; o++)
+                        {
+                                tableMaterial[o].name = " for " + gameObject.name;
+                                tableMeshR[i].materials[o] = tableMaterial[o];
+                        }
+                }
+        }
 }

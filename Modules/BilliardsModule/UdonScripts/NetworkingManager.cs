@@ -798,6 +798,12 @@ public class NetworkingManager : UdonSharpBehaviour
     public void _OnTableModelChanged(uint newTableModel)
     {
         tableModelSynced = (byte)newTableModel;
+#if true // 正月専用
+        if (table.NewYearMode)
+        {
+            physicsSynced = tableModelSynced;
+        }
+#endif
 
         bufferMessages(false);
     }
@@ -805,6 +811,12 @@ public class NetworkingManager : UdonSharpBehaviour
     public void _OnPhysicsChanged(uint newPhysics)
     {
         physicsSynced = (byte)newPhysics;
+#if true // 正月専用
+        if (table.NewYearMode)
+        {
+            tableModelSynced = physicsSynced;
+        }
+#endif
 
         bufferMessages(false);
     }
