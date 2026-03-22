@@ -1,4 +1,4 @@
-﻿
+﻿#define EIJIS_EVENT_CAMERA_SYSTEM_POOLS
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -14,7 +14,11 @@ public class CameraManager : UdonSharpBehaviour
 
     private bool isEnabled;
 
+#if EIJIS_EVENT_CAMERA_SYSTEM_POOLS
+    [System.NonSerialized] public GameObject[] cameras;
+#else
     private GameObject[] cameras;
+#endif
     private int currentCam;
 
     /*
