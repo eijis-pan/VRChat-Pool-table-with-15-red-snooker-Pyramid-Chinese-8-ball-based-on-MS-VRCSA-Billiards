@@ -2800,8 +2800,9 @@ public class BilliardsModule : UdonSharpBehaviour
             _LogInfo($"EIJIS_DEBUG  fallOffFoul = {fallOffFoul}, ballsPocketedLocal = {ballsPocketedLocal:X4}, ballsPocketedLocal & 0xE001u = {(ballsPocketedLocal & 0xE001u):X4}");
 #endif
             byte currentStep = pushOutStateLocal; // currentStep re-use variable
-            if (currentStep == 2 && !fbMadePoint && !fallOffFoul && (ballsPocketedLocal & 0xE001u) == 0xE001u)
+            if (!fbMadePoint && !fallOffFoul && (ballsPocketedLocal & 0xE001u) == 0xE001u)
             {
+                pushOutStateLocal = 2; // currentStep re-use variable
                 fbMadePoint = true;
                 handle4BallHit(balls[id].transform.localPosition, true);
             }
