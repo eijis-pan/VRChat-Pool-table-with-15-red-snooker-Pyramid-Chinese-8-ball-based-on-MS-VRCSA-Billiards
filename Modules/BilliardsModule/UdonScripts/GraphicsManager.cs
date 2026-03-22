@@ -71,6 +71,7 @@ public class GraphicsManager : UdonSharpBehaviour
 	[SerializeField] TextMeshProUGUI[] playerNames;
 #if EIJIS_ALT_DISPLAY
 	[SerializeField] TextMeshProUGUI[] playerNames2;
+	[SerializeField] TextMeshProUGUI[] playerNames3;
 #endif
 
 	[SerializeField] TextMeshPro winnerText;
@@ -126,6 +127,9 @@ public class GraphicsManager : UdonSharpBehaviour
 	private Material scorecard2;
 	private GameObject scorecard2_gameobject;
 	private GameObject scorecard_info2;
+	private Material scorecard3;
+	private GameObject scorecard3_gameobject;
+	public GameObject scorecard_info3;
 #endif
 	private Color[] scorecardColors = new Color[15];
 #if EIJIS_CAROM_CUSTOM_GOAL_POINT
@@ -209,6 +213,9 @@ public class GraphicsManager : UdonSharpBehaviour
 		scorecard_info2 = table.transform.Find("intl.scorecardinfo2").gameObject;
 		scorecard2_gameobject = scorecard_info2.transform.Find("scorecard2").gameObject;
 		scorecard2 = scorecard2_gameobject.GetComponent<MeshRenderer>().material;
+		scorecard_info3 = table.transform.Find("intl.scorecardinfo3").gameObject;
+		scorecard3_gameobject = scorecard_info3.transform.Find("scorecard3").gameObject;
+		scorecard3 = scorecard3_gameobject.GetComponent<MeshRenderer>().material;
 #endif
 
 		if (table.tableModels[table.tableModelLocal].tableMaterial)
@@ -445,6 +452,8 @@ public class GraphicsManager : UdonSharpBehaviour
 #if EIJIS_ALT_DISPLAY
 		playerNames2[0].text = playerNames[0].text;
 		playerNames2[1].text = playerNames[1].text;
+		playerNames3[0].text = playerNames[0].text;
+		playerNames3[1].text = playerNames[1].text;
 #endif
 	}
 
@@ -1169,6 +1178,7 @@ int uniform_cue_colour;
 		scorecard_gameobject.SetActive(true);
 #if EIJIS_ALT_DISPLAY
 		scorecard_info2.SetActive(true);
+		scorecard_info3.SetActive(true);
 #endif
 #if EIJIS_PYRAMID
 #if EIJIS_CAROM
@@ -1180,6 +1190,9 @@ int uniform_cue_colour;
 		scorecard2.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
 				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion || table.isBanking || table.is4Ball235 || table.isKailun ? 2 : table.gameModeLocal)
 			));
+		scorecard3.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
+				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion || table.isBanking || table.is4Ball235 || table.isKailun ? 2 : table.gameModeLocal)
+			));
 #endif
 #else
 		scorecard.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
@@ -1187,6 +1200,9 @@ int uniform_cue_colour;
 			));
 #if EIJIS_ALT_DISPLAY
 		scorecard2.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
+				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion ? 2 : table.gameModeLocal)
+			));
+		scorecard3.SetInt("_GameMode", (int)(table.isPyramid ? 0 :
 				(table.is3Cusion || table.is1Cusion || table.is2Cusion || table.is0Cusion ? 2 : table.gameModeLocal)
 			));
 #endif
@@ -1202,12 +1218,15 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 		scorecard2.SetInt("_SolidsMode", 0);
 		scorecard2_gameobject.SetActive(true);
+		scorecard3.SetInt("_SolidsMode", 0);
+		scorecard3_gameobject.SetActive(true);
 #endif
 		for (int i = 0; i < playerNames.Length; i++)
 		{
 			playerNames[i].gameObject.SetActive(true);
 #if EIJIS_ALT_DISPLAY
 			playerNames2[i].gameObject.SetActive(true);
+			playerNames3[i].gameObject.SetActive(true);
 #endif
 		}
 #if EIJIS_SNOOKER15REDS
@@ -1287,6 +1306,8 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 			scorecard2.SetInt("_LeftScoreMode", leftScoreMode);
 			scorecard2.SetInt("_RightScoreMode", rightScoreMode);
+			scorecard3.SetInt("_LeftScoreMode", leftScoreMode);
+			scorecard3.SetInt("_RightScoreMode", rightScoreMode);
 #endif
 #endif
 		}
@@ -1421,6 +1442,8 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 		scorecard_info2.SetActive(false);
 		scorecard2_gameobject.SetActive(false);
+		scorecard_info3.SetActive(false);
+		scorecard3_gameobject.SetActive(false);
 #endif
 		table.marker9ball.SetActive(false);
 #if EIJIS_CALLSHOT
@@ -1485,6 +1508,7 @@ int uniform_cue_colour;
 			scorecard_gameobject.SetActive(false);
 #if EIJIS_ALT_DISPLAY
 			scorecard2_gameobject.SetActive(false);
+			scorecard3_gameobject.SetActive(false);
 #endif
 			orangeScore.gameObject.SetActive(false);
 			blueScore.gameObject.SetActive(false);
@@ -1494,6 +1518,7 @@ int uniform_cue_colour;
 				playerNames[i].gameObject.SetActive(false);
 #if EIJIS_ALT_DISPLAY
 				playerNames2[i].gameObject.SetActive(false);
+				playerNames3[i].gameObject.SetActive(false);
 #endif
 			}
 		}
@@ -1506,12 +1531,14 @@ int uniform_cue_colour;
 				scorecard_gameobject.SetActive(true);
 #if EIJIS_ALT_DISPLAY
 				scorecard2_gameobject.SetActive(true);
+				scorecard3_gameobject.SetActive(true);
 #endif
 				for (int i = 0; i < playerNames.Length; i++)
 				{
 					playerNames[i].gameObject.SetActive(true);
 #if EIJIS_ALT_DISPLAY
 					playerNames2[i].gameObject.SetActive(true);
+					playerNames3[i].gameObject.SetActive(true);
 #endif
 				}
 #if EIJIS_SNOOKER15REDS
@@ -1550,6 +1577,8 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 			scorecard2.SetInt("_LeftPadding", leftScorePadding);
 			scorecard2.SetInt("_RightPadding", rightScorePadding);
+			scorecard3.SetInt("_LeftPadding", leftScorePadding);
+			scorecard3.SetInt("_RightPadding", rightScorePadding);
 #endif
 #endif
 
@@ -1560,6 +1589,9 @@ int uniform_cue_colour;
 			scorecard2.SetInt("_LeftScore", table.fbScoresLocal[0]);
 			scorecard2.SetInt("_RightScore", table.fbScoresLocal[1]);
 			scorecard2.SetColorArray("_Colors", scorecardColors);
+			scorecard3.SetInt("_LeftScore", table.fbScoresLocal[0]);
+			scorecard3.SetInt("_RightScore", table.fbScoresLocal[1]);
+			scorecard3.SetColorArray("_Colors", scorecardColors);
 #endif
 		}
 #if EIJIS_SNOOKER15REDS
@@ -1626,9 +1658,13 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 			scorecard2.SetInt("_LeftScore", counter0);
 			scorecard2.SetInt("_RightScore", counter1);
+			scorecard3.SetInt("_LeftScore", counter0);
+			scorecard3.SetInt("_RightScore", counter1);
 #if EIJIS_CAROM_CUSTOM_GOAL_POINT
 			scorecard2.SetInt("_LeftPadding", 0);
 			scorecard2.SetInt("_RightPadding", 0);
+			scorecard3.SetInt("_LeftPadding", 0);
+			scorecard3.SetInt("_RightPadding", 0);
 #endif
 #endif
 			counter0 = (7 < counter0) ? 7 : counter0;//maybe 7->8?
@@ -1648,6 +1684,8 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 			scorecard2.SetColorArray("_Colors", scorecardColors);
 			scorecard2.SetInt("_SolidsMode", 0);
+			scorecard3.SetColorArray("_Colors", scorecardColors);
+			scorecard3.SetInt("_SolidsMode", 0);
 #endif
 		}
 #endif
@@ -1707,11 +1745,16 @@ int uniform_cue_colour;
 #if EIJIS_ALT_DISPLAY
 			scorecard2.SetInt("_LeftScore", counter0[0]);
 			scorecard2.SetInt("_RightScore", counter0[1]);
+			scorecard3.SetInt("_LeftScore", counter0[0]);
+			scorecard3.SetInt("_RightScore", counter0[1]);
 #if EIJIS_CAROM_CUSTOM_GOAL_POINT
 			scorecard2.SetInt("_LeftPadding", 0);
 			scorecard2.SetInt("_RightPadding", 0);
+			scorecard3.SetInt("_LeftPadding", 0);
+			scorecard3.SetInt("_RightPadding", 0);
 #endif
 			scorecard2.SetColorArray("_Colors", scorecardColors);
+			scorecard3.SetColorArray("_Colors", scorecardColors);
 #endif
 
 			if (table.isTableOpenLocal || !usColors)
@@ -1719,6 +1762,7 @@ int uniform_cue_colour;
 				scorecard.SetInt("_SolidsMode", 0);
 #if EIJIS_ALT_DISPLAY
 				scorecard2.SetInt("_SolidsMode", 0);
+				scorecard3.SetInt("_SolidsMode", 0);
 #endif
 			}
 			else
@@ -1726,6 +1770,7 @@ int uniform_cue_colour;
 				scorecard.SetInt("_SolidsMode", table.teamColorLocal == 0 ? 1 : 2);
 #if EIJIS_ALT_DISPLAY
 				scorecard2.SetInt("_SolidsMode", table.teamColorLocal == 0 ? 1 : 2);
+				scorecard3.SetInt("_SolidsMode", table.teamColorLocal == 0 ? 1 : 2);
 #endif
 			}
 		}
