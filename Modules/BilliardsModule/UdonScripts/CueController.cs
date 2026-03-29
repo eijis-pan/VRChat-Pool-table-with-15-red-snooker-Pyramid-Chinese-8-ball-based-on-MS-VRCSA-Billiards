@@ -337,7 +337,8 @@ public class CueController : UdonSharpBehaviour
         primaryLocked = false;
         syncedCueSkin = (byte)table._CanUseCueSkin(Networking.GetOwner(this.gameObject).playerId, syncedCueSkin);
         //cheese table hook
-        syncedCueHue = table.tableHook.cueHue;
+        if (!ReferenceEquals(table.tableHook, null))
+            syncedCueHue = table.tableHook.cueHue;
 
         //syncedCueSkin = table.activeCueSkin;
         cueScale = cueScaleMine;

@@ -44,7 +44,9 @@ public class ColorNameMag : UdonSharpBehaviour
         else
         {
             //尝试从世界查找Download 脚本
-            ColorDOW = GameObject.Find("ColorDownloader").GetComponent<ColorDownload>();
+            GameObject goColorDOW  = GameObject.Find("ColorDownloader");
+            if (goColorDOW != null)
+                ColorDOW = goColorDOW.GetComponent<ColorDownload>();
 
             //如果找到则从ColorDownload获取
             if (ColorDOW != null)
