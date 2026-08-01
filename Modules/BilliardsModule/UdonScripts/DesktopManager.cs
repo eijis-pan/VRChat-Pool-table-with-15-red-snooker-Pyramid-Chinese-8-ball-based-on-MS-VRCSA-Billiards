@@ -4,6 +4,7 @@
 #define EIJIS_PUSHOUT
 #define EIJIS_CALLSHOT
 #define EIJIS_10BALL
+#define EIJIS_MNBK_AUTOCOUNTER
 
 // #define EIJIS_DEBUG_BALLORDER
 
@@ -40,6 +41,11 @@ public class DesktopManager : UdonSharpBehaviour
 #if EIJIS_PUSHOUT
     [SerializeField] private GameObject pushOut;
     [SerializeField] private GameObject pushOutDoing;
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    private GameObject desktopMnbk;
+    private GameObject safetyCalled;
+    private GameObject paused;
 #endif
 
     private BilliardsModule table;
@@ -80,6 +86,35 @@ public class DesktopManager : UdonSharpBehaviour
         cameraStartScale = root.GetComponentInChildren<Camera>().orthographicSize;
         _RefreshTable();
         _RefreshPhysics();
+#if EIJIS_MNBK_AUTOCOUNTER
+        Transform desktopMnbkTr = table.transform.Find("intl.desktop/desktop/desktop_mnbk");
+        if (ReferenceEquals(null, desktopMnbkTr))
+        {
+            table._LogInfo("  desktop_mnbk object not set.");
+        }
+        else
+        {
+            desktopMnbk = desktopMnbkTr.gameObject;
+        }
+        Transform desktopSafetyCalled = table.transform.Find("intl.desktop/desktop/desktop_safetycalled");
+        if (ReferenceEquals(null, desktopSafetyCalled))
+        {
+            table._LogInfo("  desktop_safetycalled object not set.");
+        }
+        else
+        {
+            safetyCalled = desktopSafetyCalled.gameObject;
+        }
+        Transform desktopPaused = table.transform.Find("intl.desktop/desktop/desktop_paused");
+        if (ReferenceEquals(null, desktopPaused))
+        {
+            table._LogInfo("  desktop_paused object not set.");
+        }
+        else
+        {
+            paused = desktopPaused.gameObject;
+        }
+#endif
     }
 
     public void _OnGameStarted()
@@ -280,7 +315,13 @@ public class DesktopManager : UdonSharpBehaviour
 
                         stopShooting();
                     }
+#if EIJIS_MNBK_AUTOCOUNTER
+                    updateCallSafetyIndicator();
+#endif
                 }
+#if EIJIS_MNBK_AUTOCOUNTER
+                updatePausedIndicator();
+#endif
 
                 renderCuePosition(shotDirection);
                 updateSpinIndicator();
@@ -304,6 +345,16 @@ public class DesktopManager : UdonSharpBehaviour
 #if EIJIS_PUSHOUT
         
         pushOutDoing.SetActive(table.pushOutStateLocal == table.PUSHOUT_DOING);
+#endif
+#if EIJIS_MNBK_AUTOCOUNTER
+#if EIJIS_CALLSHOT
+        if (!ReferenceEquals(null, safetyCalled)) safetyCalled.SetActive(table.safetyCalledLocal && !table.requireCallShotLocal);
+        if (!ReferenceEquals(null, paused)) paused.SetActive(table.pausedLocal && !table.requireCallShotLocal);
+#else
+        if (!ReferenceEquals(null, safetyCalled)) safetyCalled.SetActive(table.safetyCalledLocal);
+        if (!ReferenceEquals(null, paused)) paused.SetActive(table.pausedLocal);
+#endif
+        if (table.pausedLocal) return;
 #endif
 
         bool hitCtrlNow = Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl);
@@ -587,6 +638,33 @@ public class DesktopManager : UdonSharpBehaviour
     }
     
 #endif
+#if EIJIS_MNBK_AUTOCOUNTER
+    private void updateCallSafetyIndicator()
+    {
+        if (!table.isMnbk9Ball) return;
+#if EIJIS_CALLSHOT
+        if (table.requireCallShotLocal) return;
+#endif
+        
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            table._CallSafety();
+        }
+    }
+    private void updatePausedIndicator()
+    {
+        if (!table.isMnbk9Ball) return;
+#if EIJIS_CALLSHOT
+        if (table.requireCallShotLocal) return;
+#endif
+
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            table._Pause();
+        }
+    }
+
+#endif
     private void renderCuePosition(Vector3 dir)
     {
         CueController cue = table.activeCue;
@@ -641,6 +719,29 @@ public class DesktopManager : UdonSharpBehaviour
 
         cursorClampX = table.k_TABLE_WIDTH + .3f;
         cursorClampZ = table.k_TABLE_HEIGHT + .3f;
+        
+#if EIJIS_MNBK_AUTOCOUNTER
+        if (ReferenceEquals(null, desktopMnbk))
+        {
+            table._LogInfo("  desktop_mnbk object not set.");
+        }
+        else
+        {
+#if EIJIS_CALLSHOT
+            desktopMnbk.SetActive(table.isMnbk9Ball && !table.requireCallShotLocal);
+#else
+            desktopMnbk.SetActive(table.isMnbk9Ball);
+#endif
+        }
+        if (ReferenceEquals(null, safetyCalled))
+        {
+            table._LogInfo("  desktop_safetycalled object not set.");
+        }
+        if (ReferenceEquals(null, paused))
+        {
+            table._LogInfo("  desktop_paused object not set.");
+        }
+#endif
     }
 
     private void exitUI()
