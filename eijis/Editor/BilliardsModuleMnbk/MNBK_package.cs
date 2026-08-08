@@ -56,6 +56,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Cheese/Translate/TextJson/zh.Json",
 			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Prefab/old/snooker&pyramid&cn8&3c.prefab", // 1.393
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Prefab/snooker&pyramid&cn8&3c&10b.prefab", // include 1.391 to 1.393
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/Prefabs/AdvancedPhysicsManager_V0.6X.prefab",
 			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/ht8b_materials/procedural/tballs_3Cushion_YellowCueBall.png", // 1.393
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/Materials/SkipTurnButton.mat",
 			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/Materials/PocketMarker_Blue.mat",
@@ -69,6 +70,8 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/AdvancedPhysicsManager.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/AdvancedPhysicsManager_V05M.asset", // for upgrade
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/AdvancedPhysicsManager_V05M.cs", // for upgrade
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/AdvancedPhysicsManager_V06X.asset",
+			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/AdvancedPhysicsManager_V06X.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/BilliardsModule.cs",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/ButtonCallSafety.asset",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/Modules/BilliardsModule/UdonScripts/ButtonCallSafety.cs",
