@@ -1,6 +1,8 @@
 ﻿//#define MNBK_BACKOUT_PATCH
 
 using System;
+using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEditor;
 
@@ -16,7 +18,7 @@ namespace EijisMsVrcsaTableUtil
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Materials/BilliardsModuleMnbk/DesktopAssets_mnbk.mat",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Materials/BilliardsModuleMnbk/DesktopAssets_paused.mat",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Materials/BilliardsModuleMnbk/DesktopAssets_safetycalled.mat",
-			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Materials/BilliardsModuleMnbk/SkipTurnButton.mat",
+			// "Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Materials/BilliardsModuleMnbk/SkipTurnButton.mat",
 			// "Assets/eijis/Prefab/MS-VRCSA-Billiards_mnbk/MS-VRCSA_Table_mnbk.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/BilliardsModuleMnbk/intl.controls.prefab",
 			"Assets/VRChat-Pool-table-15-red-snooker-Pyramid-Chinese-8-MS-VRCSA-Billiards/eijis/Prefab/BilliardsModuleMnbk/intl.desktop/desktop/desktop_mnbk.prefab",
@@ -104,7 +106,27 @@ namespace EijisMsVrcsaTableUtil
 			{
 				Debug.Log("ExportPackage");
 
-				AssetDatabase.ExportPackage(exportFilePaths, exportPackageFilePath, ExportPackageOptions.Default);
+				var sb = new StringBuilder();
+				foreach (var exportFilePath in exportFilePaths)
+				{
+					if (!File.Exists(exportFilePath))
+					{
+						sb.AppendLine(exportFilePath);
+						Debug.LogWarning("ファイルが見つかりません。 " + exportFilePath);
+					}
+				}
+
+				bool ok = true;
+				if (0 < sb.Length)
+				{
+					ok = EditorUtility.DisplayDialog("Custom Script Warning",
+						"Export file(s) nod found.\n" + sb.ToString(), "Ignore", "Cancel");
+				}
+
+				if (ok)
+				{
+					AssetDatabase.ExportPackage(exportFilePaths, exportPackageFilePath, ExportPackageOptions.Default);
+				}
 
 				EditorUtility.DisplayDialog ("Custom Script Result", "ExportPackage end", "OK");
 			}
